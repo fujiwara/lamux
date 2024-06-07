@@ -23,6 +23,13 @@ For example, if you run `lamux` with `--function-name=example` and `--domain-suf
 
 The forwarded Lambda functions should process Function URLs payload, but these functions do not need Function URLs settings.
 
+
+| Request URL | Lambda Function Alias |
+|-------------|------------------------|
+| `http://foo.example.com/` | `example:foo` |
+| `http://bar.example.com/` | `example:bar` |
+
+
 ### Working with CloudFront and Lambda FunctionURLs
 
 Lamux can work as a Lambda FunctionURLs. But in this case, Lamux cannot use the `Host` header because the Lambda function should be accessed via FunctionURLs (e.g., `***.lambda-url.us-east-1.on.aws`). So, Lamux uses the `X-Forwarded-Host` header to determine which requests should be forwarded to the Lambda function.
