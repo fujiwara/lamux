@@ -2,7 +2,7 @@
 
 ## Description
 
-Lamux is a multiplexer for AWS Lambda Function aliases.
+Lamux is a HTTP multiplexer for AWS Lambda Function aliases.
 
 ## Usage
 
