@@ -40,7 +40,9 @@ async function handler(event) {
 
 ## Installation
 
-TODO
+[Download the latest release](https://github.com/fujiwara/lamux/releases)
+
+The `lamux` binary is a standalone executable. You can run it on your local machine or deploy it to AWS Lambda `bootstrap` for custom runtimes (provided.al2023 or provided.al2).
 
 ## Configuration
 
