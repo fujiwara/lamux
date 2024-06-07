@@ -78,7 +78,7 @@ func (l *Lamux) wrapHandler(h handlerFunc) http.HandlerFunc {
 		ctx = slogcontext.WithValue(ctx, "duration", elapsed.Seconds())
 		if err != nil {
 			slog.InfoContext(ctx, "request", "status", http.StatusInternalServerError, "error", err)
-			http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
 		slog.InfoContext(ctx, "request", "status", http.StatusOK)
@@ -139,13 +139,11 @@ func (l *Lamux) handleProxy(ctx context.Context, w http.ResponseWriter, r *http.
 
 func extractAlias(_ context.Context, r *http.Request, suffix string) (string, error) {
 	var host string
-	var err error
 	if host = r.Header.Get("X-Forwarded-Host"); host == "" {
 		host = r.Host
 	}
-	host, _, err = net.SplitHostPort(host)
-	if err != nil {
-		return "", fmt.Errorf("invalid host")
+	if raw, _, err := net.SplitHostPort(host); err == nil {
+		host = raw
 	}
 	if !strings.HasSuffix(host, suffix) {
 		return "", fmt.Errorf("invalid domain suffix")
