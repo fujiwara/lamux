@@ -7,10 +7,12 @@ import (
 	"log/slog"
 	"net"
 	"net/http"
+	"os"
 	"regexp"
 	"strings"
 	"time"
 
+	slogcontext "github.com/PumpkinSeed/slog-context"
 	"github.com/alecthomas/kong"
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/config"
@@ -45,7 +47,11 @@ func NewLamux(cfg *Config) (*Lamux, error) {
 
 var aliasRegexp = regexp.MustCompile(`^[a-zA-Z0-9-]+$`)
 
+type handlerFunc func(ctx context.Context, w http.ResponseWriter, r *http.Request) error
+
 func Run(ctx context.Context) error {
+	slog.SetDefault(slog.New(slogcontext.NewHandler(slog.NewJSONHandler(os.Stdout, nil))))
+
 	cfg := &Config{}
 	kong.Parse(cfg)
 
@@ -54,28 +60,57 @@ func Run(ctx context.Context) error {
 		return err
 	}
 	var mux = http.NewServeMux()
-	mux.HandleFunc("/", l.handleProxy)
+	mux.HandleFunc("/", l.wrapHandler(l.handleProxy))
 
 	addr := fmt.Sprintf(":%d", cfg.Port)
 	ridge.Run(addr, "/", mux)
 	return nil
 }
 
-func (l *Lamux) handleProxy(w http.ResponseWriter, r *http.Request) {
-	alias, err := extractAlias(r, l.Config.DomainSuffix)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
-		return
+func (l *Lamux) wrapHandler(h handlerFunc) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		ctx, cancel := context.WithTimeout(r.Context(), l.Config.UpstreamTimeout)
+		defer cancel()
+		ctx = setRequestContext(ctx, r)
+		start := time.Now()
+		err := h(ctx, w, r)
+		elapsed := time.Since(start)
+		ctx = slogcontext.WithValue(ctx, "duration", elapsed.Seconds())
+		if err != nil {
+			slog.InfoContext(ctx, "request", "status", http.StatusInternalServerError, "error", err)
+			http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+			return
+		}
+		slog.InfoContext(ctx, "request", "status", http.StatusOK)
 	}
+}
+
+func setRequestContext(ctx context.Context, r *http.Request) context.Context {
+	ctx = slogcontext.WithValue(ctx, "remote", r.RemoteAddr)
+	ctx = slogcontext.WithValue(ctx, "method", r.Method)
+	ctx = slogcontext.WithValue(ctx, "url", r.URL.String())
+	ctx = slogcontext.WithValue(ctx, "host", r.Host)
+	ctx = slogcontext.WithValue(ctx, "user-agent", r.UserAgent())
+	ctx = slogcontext.WithValue(ctx, "referer", r.Referer())
+	ctx = slogcontext.WithValue(ctx, "x-forwarded-for", r.Header.Get("X-Forwarded-For"))
+	ctx = slogcontext.WithValue(ctx, "x-forwarded-host", r.Header.Get("X-Forwarded-Host"))
+	return ctx
+}
+
+func (l *Lamux) handleProxy(ctx context.Context, w http.ResponseWriter, r *http.Request) error {
+	alias, err := extractAlias(ctx, r, l.Config.DomainSuffix)
+	if err != nil {
+		slog.ErrorContext(ctx, "extractAlias", "error", err)
+		return fmt.Errorf("invalid alias: %w", err)
+	}
+
 	payload, err := ridge.ToRequestV2(r)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
-		return
+		return fmt.Errorf("failed to convert request: %w", err)
 	}
 	b, err := json.Marshal(payload)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
+		return fmt.Errorf("failed to marshal request: %w", err)
 	}
 
 	input := &lambda.InvokeInput{
@@ -83,34 +118,26 @@ func (l *Lamux) handleProxy(w http.ResponseWriter, r *http.Request) {
 		Payload:      b,
 		Qualifier:    aws.String(alias),
 	}
-	ctx, cancel := context.WithTimeout(r.Context(), l.Config.UpstreamTimeout)
-	defer cancel()
-	start := time.Now()
 	resp, err := l.lambdaClient.Invoke(ctx, input)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
+		return fmt.Errorf("failed to invoke: %w", err)
 	}
-	elapsed := time.Since(start)
-	slog.Info("upstream", "duration", elapsed, "alias", alias, "status", resp.StatusCode)
+
 	if resp.FunctionError != nil {
-		http.Error(w, *resp.FunctionError, http.StatusInternalServerError)
-		return
+		return fmt.Errorf("function error: %s", *resp.FunctionError)
 	}
+
 	var res ridge.Response
 	if err := json.Unmarshal(resp.Payload, &res); err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
+		return fmt.Errorf("failed to unmarshal response: %w", err)
 	}
-	if n, err := res.WriteTo(w); err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	} else {
-		slog.Info("response", "method", r.Method, "url", r.URL.String(), "status", res.StatusCode, "bytes", n)
+	if _, err := res.WriteTo(w); err != nil {
+		return fmt.Errorf("failed to write response: %w", err)
 	}
+	return nil
 }
 
-func extractAlias(r *http.Request, suffix string) (string, error) {
+func extractAlias(_ context.Context, r *http.Request, suffix string) (string, error) {
 	var host string
 	var err error
 	if host = r.Header.Get("X-Forwarded-Host"); host == "" {
@@ -120,7 +147,6 @@ func extractAlias(r *http.Request, suffix string) (string, error) {
 	if err != nil {
 		return "", fmt.Errorf("invalid host")
 	}
-	slog.Info("extractAlias", "host", host, "suffix", suffix)
 	if !strings.HasSuffix(host, suffix) {
 		return "", fmt.Errorf("invalid domain suffix")
 	}
