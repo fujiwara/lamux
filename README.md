@@ -17,7 +17,7 @@ Flags:
       --upstream-timeout=30s    Timeout for upstream requests ($LAMUX_UPSTREAM_TIMEOUT)
 ```
 
-Lamux runs an HTTP server that listens on a specified port and forwards requests to a specified Lambda function. The Lambda function is identified by its name, and the domain suffix is used to determine which requests should be forwarded to it.
+Lamux runs an HTTP server that listens on a specified port and forwards requests to a specified Lambda function aliases. The Lambda function alias is identified by its name, and the domain suffix is used to determine which requests should be forwarded to it.
 
 For example, if you run `lamux` with `--function-name=example` and `--domain-suffix=example.com`, it will forward requests to `foo.example.com` to the Lambda function aliased `example:foo`.
 
