@@ -23,7 +23,11 @@ import (
 type Lamux struct {
 	Config       *Config
 	awsCfg       aws.Config
-	lambdaClient *lambda.Client
+	lambdaClient lambdaClient
+}
+
+type lambdaClient interface {
+	Invoke(ctx context.Context, params *lambda.InvokeInput, optFns ...func(*lambda.Options)) (*lambda.InvokeOutput, error)
 }
 
 func NewLamux(cfg *Config) (*Lamux, error) {
@@ -43,17 +47,17 @@ func NewLamux(cfg *Config) (*Lamux, error) {
 
 type handlerFunc func(ctx context.Context, w http.ResponseWriter, r *http.Request) error
 
-type handlerError struct {
-	err  error
-	code int
+type HandlerError struct {
+	Err  error
+	Code int
 }
 
-func (h *handlerError) Error() string {
-	return h.err.Error()
+func (h *HandlerError) Error() string {
+	return h.Err.Error()
 }
 
 func newHandlerError(err error, code int) error {
-	return &handlerError{err: err, code: code}
+	return &HandlerError{Err: err, Code: code}
 }
 
 func Run(ctx context.Context) error {
@@ -76,19 +80,18 @@ func Run(ctx context.Context) error {
 
 func (l *Lamux) wrapHandler(h handlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		ctx, cancel := context.WithTimeout(r.Context(), l.Config.UpstreamTimeout)
-		defer cancel()
+		ctx := r.Context()
 		ctx = setRequestContext(ctx, r)
 		start := time.Now()
 		err := h(ctx, w, r)
 		elapsed := time.Since(start)
 		ctx = slogcontext.WithValue(ctx, "duration", elapsed.Seconds())
 		if err != nil {
-			var herr *handlerError
+			var herr *HandlerError
 			var code int
 			if errors.As(err, &herr) {
-				slog.ErrorContext(ctx, "request", "status", herr.code, "error", herr.err)
-				code = herr.code
+				slog.ErrorContext(ctx, "request", "status", herr.Code, "error", herr.Err)
+				code = herr.Code
 			} else {
 				slog.ErrorContext(ctx, "request", "status", http.StatusInternalServerError, "error", err)
 				code = http.StatusInternalServerError
@@ -144,25 +147,9 @@ func (l *Lamux) handleProxy(ctx context.Context, w http.ResponseWriter, r *http.
 		return fmt.Errorf("failed to marshal request: %w", err)
 	}
 
-	input := &lambda.InvokeInput{
-		FunctionName: aws.String(functionName),
-		Qualifier:    aws.String(alias),
-		Payload:      b,
-	}
-	resp, err := l.lambdaClient.Invoke(ctx, input)
+	resp, err := l.Invoke(ctx, functionName, alias, b)
 	if err != nil {
-		var oe *smithy.OperationError
-		var enf *types.ResourceNotFoundException
-		if errors.As(err, &enf) {
-			err = newHandlerError(err, http.StatusNotFound)
-		} else if errors.As(err, &oe) {
-			err = newHandlerError(err, http.StatusBadGateway)
-		}
-		return fmt.Errorf("failed to invoke: %w", err)
-	}
-
-	if resp.FunctionError != nil {
-		return fmt.Errorf("function error: %s", *resp.FunctionError)
+		return err
 	}
 
 	var res ridge.Response
@@ -176,4 +163,39 @@ func (l *Lamux) handleProxy(ctx context.Context, w http.ResponseWriter, r *http.
 	slog.InfoContext(ctx, "handleProxy", "upstream_status", upstreamCode)
 
 	return nil
+}
+
+func (l *Lamux) Invoke(ctx context.Context, functionName, alias string, b []byte) (*lambda.InvokeOutput, error) {
+	ctx, cancel := context.WithTimeout(ctx, l.Config.UpstreamTimeout)
+	defer cancel()
+	input := &lambda.InvokeInput{
+		FunctionName: aws.String(functionName),
+		Qualifier:    aws.String(alias),
+		Payload:      b,
+	}
+	resp, err := l.lambdaClient.Invoke(ctx, input)
+	if err != nil {
+		if ctx.Err() != nil {
+			switch {
+			case errors.Is(ctx.Err(), context.Canceled):
+				err = newHandlerError(ctx.Err(), http.StatusGatewayTimeout)
+			case errors.Is(ctx.Err(), context.DeadlineExceeded):
+				err = newHandlerError(ctx.Err(), http.StatusGatewayTimeout)
+			default:
+			}
+			return nil, fmt.Errorf("upstream timeout: %w", err)
+		}
+		var oe *smithy.OperationError
+		var enf *types.ResourceNotFoundException
+		if errors.As(err, &enf) {
+			err = newHandlerError(err, http.StatusNotFound)
+		} else if errors.As(err, &oe) {
+			err = newHandlerError(err, http.StatusBadGateway)
+		}
+		return nil, fmt.Errorf("failed to invoke: %w", err)
+	}
+	if resp.FunctionError != nil {
+		return nil, fmt.Errorf("function error: %s", *resp.FunctionError)
+	}
+	return resp, nil
 }
