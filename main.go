@@ -114,6 +114,9 @@ func setRequestContext(ctx context.Context, r *http.Request) context.Context {
 	if id := r.Header.Get("X-Amz-Cf-Id"); id != "" {
 		ctx = slogcontext.WithValue(ctx, "x_amz_cf_id", id)
 	}
+	if id := r.Header.Get("X-Amzn-RequestId"); id != "" {
+		ctx = slogcontext.WithValue(ctx, "request_id", id)
+	}
 	return ctx
 }
 
