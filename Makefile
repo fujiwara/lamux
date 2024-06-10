@@ -1,7 +1,7 @@
 .PHONY: clean test
 
 lamux: go.* *.go
-	go build -o $@ cmd/lamux/main.go
+	go build -o $@ ./cmd/lamux/
 
 clean:
 	rm -rf lamux dist/
