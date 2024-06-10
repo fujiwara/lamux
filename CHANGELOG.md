@@ -1,5 +1,9 @@
 # Changelog
 
+## [v0.0.6](https://github.com/fujiwara/lamux/compare/v0.0.5...v0.0.6) - 2024-06-10
+- Fix error handling by @fujiwara in https://github.com/fujiwara/lamux/pull/13
+- fix: fix build error by @suzuki-shunsuke in https://github.com/fujiwara/lamux/pull/14
+
 ## [v0.0.5](https://github.com/fujiwara/lamux/compare/v0.0.4...v0.0.5) - 2024-06-10
 - log request_id of lambda runtime. by @fujiwara in https://github.com/fujiwara/lamux/pull/9
 - loop detection. by @fujiwara in https://github.com/fujiwara/lamux/pull/11
