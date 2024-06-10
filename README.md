@@ -23,11 +23,26 @@ For example, if you run `lamux` with `--function-name=example` and `--domain-suf
 
 The forwarded Lambda functions should process Function URLs payload, but these functions do not need Function URLs settings.
 
+| Request URL | Lambda Function | Alias |
+|-------------|-----------------|-------|
+| `http://foo.example.com/` | `example` | `foo` |
+| `http://bar.example.com/` | `example` | `bar` |
 
-| Request URL | Lambda Function Alias |
-|-------------|------------------------|
-| `http://foo.example.com/` | `example:foo` |
-| `http://bar.example.com/` | `example:bar` |
+#### Limitations
+
+Lambda alias names allow alphanumeric characters, hyphens, and underscores, but domain names do not allow underscores. And more, lamux uses `-` as a delimiter between the alias and the function name. Lamux requires `[a-zA-Z0-9-]+` as the alias name.
+
+### Route to multiple Lambda functions
+
+You can route requests to any Lambda function by specifying the `--function-name` set to `*`.
+
+In this case, Lamux will forward requests to the Lambda function aliased `myalias-myfunc.example.com` to the Lambda function `myfunc` aliased as `myalias`.
+
+| Request URL | Lambda Function | Alias |
+|-------------|-----------------|-------|
+| `http://foo-bar.example.com/` | `bar` | `foo` |
+| `http://foo-baz.example.com/` | `baz` | `foo` |
+| `http://bar-baz.example.com/` | `baz` | `bar` |
 
 
 ### Working with CloudFront and Lambda FunctionURLs
