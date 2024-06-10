@@ -16,6 +16,7 @@ import (
 	"github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/service/lambda"
 	"github.com/aws/aws-sdk-go-v2/service/lambda/types"
+	"github.com/aws/smithy-go"
 	"github.com/fujiwara/ridge"
 )
 
@@ -150,8 +151,11 @@ func (l *Lamux) handleProxy(ctx context.Context, w http.ResponseWriter, r *http.
 	}
 	resp, err := l.lambdaClient.Invoke(ctx, input)
 	if err != nil {
+		var oe *smithy.OperationError
 		var enf *types.ResourceNotFoundException
-		if errors.As(err, &enf) {
+		if errors.As(err, &oe) {
+			err = newHandlerError(err, http.StatusBadGateway)
+		} else if errors.As(err, &enf) {
 			err = newHandlerError(err, http.StatusNotFound)
 		}
 		return fmt.Errorf("failed to invoke: %w", err)

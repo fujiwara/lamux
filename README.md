@@ -47,24 +47,6 @@ In this case, Lamux will forward requests to the Lambda function aliased `myalia
 | `http://foo-baz.example.com/` | `baz` | `foo` |
 | `http://bar-baz.example.com/` | `baz` | `bar` |
 
-If you want to restrict the functions to invoke, you must set an IAM Policy to specify the Lambda function to be invoked.
-
-```json
-{
-  "Version": "2012-10-17",
-  "Statement": [
-    {
-      "Effect": "Allow",
-      "Action": "lambda:InvokeFunction",
-      "Resource": [
-        "arn:aws:lambda:us-east-1:123456789012:function:foo:*",
-        "arn:aws:lambda:us-east-1:123456789012:function:bar:*",
-      ],
-    }
-  ]
-}
-```
-
 ### Working with CloudFront and Lambda FunctionURLs
 
 Lamux can work as a Lambda FunctionURLs. But in this case, Lamux cannot use the `Host` header because the Lambda function should be accessed via FunctionURLs (e.g., `***.lambda-url.us-east-1.on.aws`). So, Lamux uses the `X-Forwarded-Host` header to determine which requests should be forwarded to the Lambda function.
@@ -90,7 +72,48 @@ The `lamux` binary is a standalone executable. You can run it on your local mach
 
 All settings can be specified via command-line flags or environment variables.
 
-### `-port` (`$LAMUX_PORT`)
+### `AWS_REGION` environment variable
+
+AWS region to use.
+
+### IAM Policy
+
+Lamux must have the IAM policy, which can `lambda:InvokeFunction`.
+
+```json
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Effect": "Allow",
+      "Action": "lambda:InvokeFunction",
+      "Resource": "*",
+    }
+  ]
+}
+```
+
+If you want to restrict the functions to invoke, you must set an IAM Policy to specify the Lambda function to be invoked.
+
+```json
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Effect": "Allow",
+      "Action": "lambda:InvokeFunction",
+      "Resource": [
+        "arn:aws:lambda:us-east-1:123456789012:function:foo:*",
+        "arn:aws:lambda:us-east-1:123456789012:function:bar:*",
+      ],
+    }
+  ]
+}
+```
+
+If `lamux` runs on Lambda Function URLs, you should attach the appropriate execution policy to the Lambda function's role. (e.g., `AWSLambdaBasicExecutionRole` managed policy)
+
+### `--port` (`$LAMUX_PORT`)
 
 Port to listen on. Default is `8080`. This setting is ignored when `lamux` running on AWS Lambda Function URLs.
 
