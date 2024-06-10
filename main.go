@@ -20,11 +20,65 @@ import (
 	"github.com/fujiwara/ridge"
 )
 
+var nameRegexp = regexp.MustCompile(`^[a-zA-Z0-9]+$`)
+
 type Config struct {
 	Port            int           `help:"Port to listen on" default:"8080" env:"LAMUX_PORT" name:"port"`
 	FunctionName    string        `help:"Name of the Lambda function to proxy" required:"" env:"LAMUX_FUNCTION_NAME" name:"function-name"`
 	DomainSuffix    string        `help:"Domain suffix to accept requests for" required:"" env:"LAMUX_DOMAIN_SUFFIX" name:"domain-suffix"`
 	UpstreamTimeout time.Duration `help:"Timeout for upstream requests" default:"30s" env:"LAMUX_UPSTREAM_TIMEOUT" name:"upstream-timeout"`
+}
+
+func (cfg *Config) Validate() error {
+	if cfg.Port <= 0 {
+		return fmt.Errorf("port must be greater than 0")
+	}
+	if cfg.FunctionName == "" {
+		return fmt.Errorf("function name must be set")
+	}
+	if cfg.FunctionName != "*" && !nameRegexp.MatchString(cfg.FunctionName) {
+		return fmt.Errorf("invalid function name (%s allowed)", nameRegexp.String())
+	}
+	if cfg.DomainSuffix == "" {
+		return fmt.Errorf("domain suffix must be set")
+	}
+	if cfg.UpstreamTimeout <= 0 {
+		return fmt.Errorf("upstream timeout must be greater than 0")
+	}
+	return nil
+}
+
+func (cfg *Config) ExtractAliasAndFunctionName(_ context.Context, r *http.Request) (string, string, error) {
+	var host string
+	if host = r.Header.Get("X-Forwarded-Host"); host == "" {
+		host = r.Host
+	}
+	if raw, _, err := net.SplitHostPort(host); err == nil {
+		host = raw
+	}
+	if !strings.HasSuffix(host, cfg.DomainSuffix) {
+		return "", "", fmt.Errorf("invalid domain suffix (must be %s)", cfg.DomainSuffix)
+	}
+
+	if cfg.FunctionName != "*" { // fixed function name
+		alias := strings.TrimSuffix(host, "."+cfg.DomainSuffix)
+		if !nameRegexp.MatchString(alias) {
+			return "", "", fmt.Errorf("invalid alias (%s allowed)", nameRegexp.String())
+		}
+		return alias, cfg.FunctionName, nil
+	}
+
+	// extract alias and function name from host
+	target := strings.TrimSuffix(host, "."+cfg.DomainSuffix)
+	p := strings.SplitN(target, "-", 2)
+	if len(p) != 2 {
+		return "", "", fmt.Errorf("invalid host name format. must be {alias}-{function}.%s", cfg.DomainSuffix)
+	}
+	alias, functionName := p[0], p[1]
+	if !nameRegexp.MatchString(alias) || !nameRegexp.MatchString(functionName) {
+		return "", "", fmt.Errorf("invalid alias or function name (%s allowed)", nameRegexp.String())
+	}
+	return alias, functionName, nil
 }
 
 type Lamux struct {
@@ -34,6 +88,9 @@ type Lamux struct {
 }
 
 func NewLamux(cfg *Config) (*Lamux, error) {
+	if err := cfg.Validate(); err != nil {
+		return nil, fmt.Errorf("invalid config: %w", err)
+	}
 	awsCfg, err := config.LoadDefaultConfig(context.Background())
 	if err != nil {
 		return nil, fmt.Errorf("failed to load AWS config: %w", err)
@@ -44,8 +101,6 @@ func NewLamux(cfg *Config) (*Lamux, error) {
 		lambdaClient: lambda.NewFromConfig(awsCfg),
 	}, nil
 }
-
-var aliasRegexp = regexp.MustCompile(`^[a-zA-Z0-9-]+$`)
 
 type handlerFunc func(ctx context.Context, w http.ResponseWriter, r *http.Request) error
 
@@ -98,10 +153,10 @@ func setRequestContext(ctx context.Context, r *http.Request) context.Context {
 }
 
 func (l *Lamux) handleProxy(ctx context.Context, w http.ResponseWriter, r *http.Request) error {
-	alias, err := extractAlias(ctx, r, l.Config.DomainSuffix)
+	alias, functionName, err := l.Config.ExtractAliasAndFunctionName(ctx, r)
 	if err != nil {
-		slog.ErrorContext(ctx, "extractAlias", "error", err)
-		return fmt.Errorf("invalid alias: %w", err)
+		slog.ErrorContext(ctx, "handleProxy", "error", err)
+		return err
 	}
 
 	payload, err := ridge.ToRequestV2(r)
@@ -114,9 +169,9 @@ func (l *Lamux) handleProxy(ctx context.Context, w http.ResponseWriter, r *http.
 	}
 
 	input := &lambda.InvokeInput{
-		FunctionName: &l.Config.FunctionName,
-		Payload:      b,
+		FunctionName: aws.String(functionName),
 		Qualifier:    aws.String(alias),
+		Payload:      b,
 	}
 	resp, err := l.lambdaClient.Invoke(ctx, input)
 	if err != nil {
@@ -135,22 +190,4 @@ func (l *Lamux) handleProxy(ctx context.Context, w http.ResponseWriter, r *http.
 		return fmt.Errorf("failed to write response: %w", err)
 	}
 	return nil
-}
-
-func extractAlias(_ context.Context, r *http.Request, suffix string) (string, error) {
-	var host string
-	if host = r.Header.Get("X-Forwarded-Host"); host == "" {
-		host = r.Host
-	}
-	if raw, _, err := net.SplitHostPort(host); err == nil {
-		host = raw
-	}
-	if !strings.HasSuffix(host, suffix) {
-		return "", fmt.Errorf("invalid domain suffix")
-	}
-	alias := strings.TrimSuffix(host, "."+suffix)
-	if !aliasRegexp.MatchString(alias) {
-		return "", fmt.Errorf("invalid alias")
-	}
-	return alias, nil
 }
