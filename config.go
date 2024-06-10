@@ -21,8 +21,8 @@ type Config struct {
 }
 
 func (cfg *Config) Validate() error {
-	if cfg.Port <= 0 {
-		return fmt.Errorf("port must be greater than 0")
+	if cfg.Port < 0 {
+		return fmt.Errorf("port must not be negative")
 	}
 	if cfg.FunctionName == "" {
 		return fmt.Errorf("function name must be set")

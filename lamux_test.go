@@ -120,7 +120,6 @@ func TestClient(t *testing.T) {
 	for _, tc := range clientTestCases {
 		t.Run(tc.name, func(t *testing.T) {
 			app, err := lamux.NewLamux(&lamux.Config{
-				Port:            8080,
 				FunctionName:    "test-func",
 				DomainSuffix:    "example.net",
 				UpstreamTimeout: time.Second,
