@@ -72,11 +72,13 @@ All settings can be specified via command-line flags or environment variables.
 
 ### `-port` (`$LAMUX_PORT`)
 
-Port to listen on. Default is `8080`. This setting is ignored when running on AWS Lambda Function URLs.
+Port to listen on. Default is `8080`. This setting is ignored when `lamux` running on AWS Lambda Function URLs.
 
 ### `--function-name` (`$LAMUX_FUNCTION_NAME`)
 
 Name of the Lambda function to proxy. This setting is required.
+
+If you set `--function-name` to `*`, Lamux will route requests to any Lambda function. In this case, the Lambda function and alias are determined by the hostname.
 
 ### `--domain-suffix` (`$LAMUX_DOMAIN_SUFFIX`)
 
@@ -85,6 +87,8 @@ Domain suffix to accept requests for. This setting is required.
 ### `--upstream-timeout` (`$LAMUX_UPSTREAM_TIMEOUT`)
 
 Timeout for upstream requests. Default is `30s`.
+
+This setting is affected by the Lambda function timeout. If the Lambda function timeout is less than the `--upstream-timeout`, it will time out before the `--upstream-timeout`.
 
 
 ## LICENSE
