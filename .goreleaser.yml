@@ -4,7 +4,7 @@ before:
 builds:
   - env:
       - CGO_ENABLED=0
-    main: cmd/lamux/main.go
+    main: ./cmd/lamux/
     binary: lamux
     goos:
       - linux
