@@ -153,10 +153,10 @@ func (l *Lamux) handleProxy(ctx context.Context, w http.ResponseWriter, r *http.
 	if err != nil {
 		var oe *smithy.OperationError
 		var enf *types.ResourceNotFoundException
-		if errors.As(err, &oe) {
-			err = newHandlerError(err, http.StatusBadGateway)
-		} else if errors.As(err, &enf) {
+		if errors.As(err, &enf) {
 			err = newHandlerError(err, http.StatusNotFound)
+		} else if errors.As(err, &oe) {
+			err = newHandlerError(err, http.StatusBadGateway)
 		}
 		return fmt.Errorf("failed to invoke: %w", err)
 	}
