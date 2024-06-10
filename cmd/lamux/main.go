@@ -11,7 +11,7 @@ import (
 )
 
 func main() {
-	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, os.Kill, unix.SIGTERM)
+	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, unix.SIGTERM)
 	defer stop()
 	if err := run(ctx); err != nil {
 		slog.ErrorContext(ctx, err.Error())
