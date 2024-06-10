@@ -30,13 +30,16 @@ The forwarded Lambda functions should process Function URLs payload, but these f
 
 #### Limitations
 
-Lambda alias names allow alphanumeric characters, hyphens, and underscores, but domain names do not allow underscores. And more, lamux uses `-` as a delimiter between the alias and the function name. Lamux requires `[a-zA-Z0-9-]+` as the alias name.
+Lambda alias names allow alphanumeric characters, hyphens, and underscores, but domain names do not allow underscores. And more, lamux uses `-` as a delimiter between the alias and the function name.
+
+- alias name pattern: `^[a-zA-Z0-9]+$` (`-` and `_` are not allowed)
+- function name allows: `^[a-zA-Z0-9-_]+$` (`-` is allowed, `_` is not allowed)
 
 ### Route to multiple Lambda functions
 
 You can route requests to any Lambda function by specifying the `--function-name` set to `*`.
 
-In this case, Lamux will forward requests to the Lambda function aliased `myalias-myfunc.example.com` to the Lambda function `myfunc` aliased as `myalias`.
+In this case, Lamux will forward requests to the Lambda function aliased `myalias-my-func.example.com` to the Lambda function `my-func` aliased as `myalias`.
 
 | Request URL | Lambda Function | Alias |
 |-------------|-----------------|-------|

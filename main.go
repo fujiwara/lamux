@@ -22,7 +22,8 @@ import (
 	"github.com/fujiwara/ridge"
 )
 
-var nameRegexp = regexp.MustCompile(`^[a-zA-Z0-9]+$`)
+var aliasRegexp = regexp.MustCompile(`^[a-zA-Z0-9]+$`)
+var functionNameRegexp = regexp.MustCompile(`^[a-zA-Z0-9-]+$`)
 
 type Config struct {
 	Port            int           `help:"Port to listen on" default:"8080" env:"LAMUX_PORT" name:"port"`
@@ -38,8 +39,8 @@ func (cfg *Config) Validate() error {
 	if cfg.FunctionName == "" {
 		return fmt.Errorf("function name must be set")
 	}
-	if cfg.FunctionName != "*" && !nameRegexp.MatchString(cfg.FunctionName) {
-		return fmt.Errorf("invalid function name (%s allowed)", nameRegexp.String())
+	if cfg.FunctionName != "*" && !functionNameRegexp.MatchString(cfg.FunctionName) {
+		return fmt.Errorf("invalid function name (%s allowed)", functionNameRegexp.String())
 	}
 	if cfg.DomainSuffix == "" {
 		return fmt.Errorf("domain suffix must be set")
@@ -64,8 +65,8 @@ func (cfg *Config) ExtractAliasAndFunctionName(_ context.Context, r *http.Reques
 
 	if cfg.FunctionName != "*" { // fixed function name
 		alias := strings.TrimSuffix(host, "."+cfg.DomainSuffix)
-		if !nameRegexp.MatchString(alias) {
-			return "", "", fmt.Errorf("invalid alias (%s allowed)", nameRegexp.String())
+		if !aliasRegexp.MatchString(alias) {
+			return "", "", fmt.Errorf("invalid alias (%s allowed)", aliasRegexp.String())
 		}
 		return alias, cfg.FunctionName, nil
 	}
@@ -77,8 +78,11 @@ func (cfg *Config) ExtractAliasAndFunctionName(_ context.Context, r *http.Reques
 		return "", "", fmt.Errorf("invalid host name format. must be {alias}-{function}.%s", cfg.DomainSuffix)
 	}
 	alias, functionName := p[0], p[1]
-	if !nameRegexp.MatchString(alias) || !nameRegexp.MatchString(functionName) {
-		return "", "", fmt.Errorf("invalid alias or function name (%s allowed)", nameRegexp.String())
+	if !aliasRegexp.MatchString(alias) {
+		return "", "", fmt.Errorf("invalid alias (%s allowed)", aliasRegexp.String())
+	}
+	if !functionNameRegexp.MatchString(functionName) {
+		return "", "", fmt.Errorf("invalid function name (%s allowed)", functionNameRegexp.String())
 	}
 	return alias, functionName, nil
 }

@@ -58,6 +58,24 @@ var TestCasesOK = []testCase{
 		},
 	},
 	{
+		name: "function name includes -",
+		cfg: &lamux.Config{
+			Port:            8080,
+			FunctionName:    "*",
+			DomainSuffix:    "example.net",
+			UpstreamTimeout: 30,
+		},
+		req: func() *http.Request {
+			req, _ := http.NewRequest("GET", "http://myalias-m-y-func.example.net", nil)
+			req.Header.Set("Host", "myalias-m-y-func.example.net")
+			return req
+		},
+		expect: result{
+			alias:    "myalias",
+			function: "m-y-func",
+		},
+	},
+	{
 		name: "x-forwarded-host",
 		cfg: &lamux.Config{
 			Port:            8080,
@@ -102,8 +120,8 @@ var TestCasesNG = []testCase{
 			UpstreamTimeout: 30,
 		},
 		req: func() *http.Request {
-			req, _ := http.NewRequest("GET", "http://myalias-my-func.example.net", nil)
-			req.Header.Set("Host", "example.com")
+			req, _ := http.NewRequest("GET", "http://myalias-my_func.example.net", nil)
+			req.Header.Set("Host", "myalias-my_func.example.net")
 			return req
 		},
 	},
