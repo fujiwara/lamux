@@ -1,5 +1,7 @@
 # Changelog
 
+## [v0.0.7](https://github.com/fujiwara/lamux/compare/v0.0.6...v0.0.7) - 2024-06-10
+
 ## [v0.0.6](https://github.com/fujiwara/lamux/compare/v0.0.5...v0.0.6) - 2024-06-10
 - Fix error handling by @fujiwara in https://github.com/fujiwara/lamux/pull/13
 - fix: fix build error by @suzuki-shunsuke in https://github.com/fujiwara/lamux/pull/14
