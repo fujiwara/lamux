@@ -127,6 +127,10 @@ func (l *Lamux) handleProxy(ctx context.Context, w http.ResponseWriter, r *http.
 		slog.ErrorContext(ctx, "handleProxy", "error", err)
 		return err
 	}
+	// prevent recursive call
+	if os.Getenv("AWS_LAMBDA_FUNCTION_NAME") == functionName {
+		return fmt.Errorf("recursive call detected: %s", functionName)
+	}
 	ctx = slogcontext.WithValue(ctx, "function_name", functionName)
 	ctx = slogcontext.WithValue(ctx, "alias", alias)
 
