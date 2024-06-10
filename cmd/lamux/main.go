@@ -2,15 +2,20 @@ package main
 
 import (
 	"context"
-	"log"
+	"log/slog"
+	"os"
+	"os/signal"
 
 	app "github.com/fujiwara/lamux"
+	"golang.org/x/sys/unix"
 )
 
 func main() {
-	ctx := context.TODO()
+	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, os.Kill, unix.SIGTERM)
+	defer stop()
 	if err := run(ctx); err != nil {
-		log.Fatal(err)
+		slog.ErrorContext(ctx, err.Error())
+		os.Exit(1)
 	}
 }
 
