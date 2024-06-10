@@ -7,11 +7,10 @@ import (
 	"os/signal"
 
 	app "github.com/fujiwara/lamux"
-	"golang.org/x/sys/unix"
 )
 
 func main() {
-	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, unix.SIGTERM)
+	ctx, stop := signal.NotifyContext(context.Background(), signals()...)
 	defer stop()
 	if err := run(ctx); err != nil {
 		slog.ErrorContext(ctx, err.Error())
