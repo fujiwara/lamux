@@ -30,7 +30,13 @@ func (m *mockClient) Invoke(ctx context.Context, input *lambda.InvokeInput, optF
 			Message: aws.String("Resource not found"),
 		}
 	}
-	time.Sleep(m.latency)
+	timer := time.NewTimer(m.latency)
+	defer timer.Stop()
+	select {
+	case <-timer.C:
+	case <-ctx.Done():
+		return nil, ctx.Err()
+	}
 	if m.code >= 500 {
 		return nil, &smithy.GenericAPIError{
 			Code:    "InternalError",
@@ -113,7 +119,7 @@ var clientTestCases = []clientTestCase{
 func TestClient(t *testing.T) {
 	for _, tc := range clientTestCases {
 		t.Run(tc.name, func(t *testing.T) {
-			lamux, err := lamux.NewLamux(&lamux.Config{
+			app, err := lamux.NewLamux(&lamux.Config{
 				Port:            8080,
 				FunctionName:    "test-func",
 				DomainSuffix:    "example.net",
@@ -122,14 +128,14 @@ func TestClient(t *testing.T) {
 			if err != nil {
 				t.Fatalf("unexpected error: %v", err)
 			}
-			lamux.SetClient(tc.client)
+			app.SetClient(tc.client)
 
 			var code int
-			resp, err := lamux.Invoke(context.Background(), tc.functionName, tc.alias, nil)
+			resp, err := app.Invoke(context.Background(), tc.functionName, tc.alias, nil)
 			if err != nil {
 				var herr *lamux.HandlerError
 				if errors.As(err, &herr) {
-					code = herr.Code
+					code = herr.Code()
 				}
 			} else {
 				code = int(resp.StatusCode)

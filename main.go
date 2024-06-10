@@ -16,7 +16,6 @@ import (
 	"github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/service/lambda"
 	"github.com/aws/aws-sdk-go-v2/service/lambda/types"
-	"github.com/aws/smithy-go"
 	"github.com/fujiwara/ridge"
 )
 
@@ -48,16 +47,24 @@ func NewLamux(cfg *Config) (*Lamux, error) {
 type handlerFunc func(ctx context.Context, w http.ResponseWriter, r *http.Request) error
 
 type HandlerError struct {
-	Err  error
-	Code int
+	err  error
+	code int
 }
 
 func (h *HandlerError) Error() string {
-	return h.Err.Error()
+	return h.err.Error()
 }
 
-func newHandlerError(err error, code int) error {
-	return &HandlerError{Err: err, Code: code}
+func (h *HandlerError) Unwrap() error {
+	return h.err
+}
+
+func (h *HandlerError) Code() int {
+	return h.code
+}
+
+func newHandlerError(err error, code int) *HandlerError {
+	return &HandlerError{err: err, code: code}
 }
 
 func Run(ctx context.Context) error {
@@ -90,8 +97,8 @@ func (l *Lamux) wrapHandler(h handlerFunc) http.HandlerFunc {
 			var herr *HandlerError
 			var code int
 			if errors.As(err, &herr) {
-				slog.ErrorContext(ctx, "request", "status", herr.Code, "error", herr.Err)
-				code = herr.Code
+				slog.ErrorContext(ctx, "request", "status", herr.Code(), "error", herr.Unwrap())
+				code = herr.Code()
 			} else {
 				slog.ErrorContext(ctx, "request", "status", http.StatusInternalServerError, "error", err)
 				code = http.StatusInternalServerError
@@ -185,17 +192,16 @@ func (l *Lamux) Invoke(ctx context.Context, functionName, alias string, b []byte
 			}
 			return nil, fmt.Errorf("upstream timeout: %w", err)
 		}
-		var oe *smithy.OperationError
 		var enf *types.ResourceNotFoundException
 		if errors.As(err, &enf) {
 			err = newHandlerError(err, http.StatusNotFound)
-		} else if errors.As(err, &oe) {
+		} else {
 			err = newHandlerError(err, http.StatusBadGateway)
 		}
 		return nil, fmt.Errorf("failed to invoke: %w", err)
 	}
 	if resp.FunctionError != nil {
-		return nil, fmt.Errorf("function error: %s", *resp.FunctionError)
+		return nil, newHandlerError(fmt.Errorf(*resp.FunctionError), http.StatusInternalServerError)
 	}
 	return resp, nil
 }
