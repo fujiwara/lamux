@@ -47,6 +47,23 @@ In this case, Lamux will forward requests to the Lambda function aliased `myalia
 | `http://foo-baz.example.com/` | `baz` | `foo` |
 | `http://bar-baz.example.com/` | `baz` | `bar` |
 
+If you want to restrict the functions to invoke, you must set an IAM Policy to specify the Lambda function to be invoked.
+
+```json
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Effect": "Allow",
+      "Action": "lambda:InvokeFunction",
+      "Resource": [
+        "arn:aws:lambda:us-east-1:123456789012:function:foo:*",
+        "arn:aws:lambda:us-east-1:123456789012:function:bar:*",
+      ],
+    }
+  ]
+}
+```
 
 ### Working with CloudFront and Lambda FunctionURLs
 
