@@ -6,11 +6,8 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
-	"net"
 	"net/http"
 	"os"
-	"regexp"
-	"strings"
 	"time"
 
 	slogcontext "github.com/PumpkinSeed/slog-context"
@@ -21,67 +18,6 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/lambda/types"
 	"github.com/fujiwara/ridge"
 )
-
-var nameRegexp = regexp.MustCompile(`^[a-zA-Z0-9]+$`)
-
-type Config struct {
-	Port            int           `help:"Port to listen on" default:"8080" env:"LAMUX_PORT" name:"port"`
-	FunctionName    string        `help:"Name of the Lambda function to proxy" required:"" env:"LAMUX_FUNCTION_NAME" name:"function-name"`
-	DomainSuffix    string        `help:"Domain suffix to accept requests for" required:"" env:"LAMUX_DOMAIN_SUFFIX" name:"domain-suffix"`
-	UpstreamTimeout time.Duration `help:"Timeout for upstream requests" default:"30s" env:"LAMUX_UPSTREAM_TIMEOUT" name:"upstream-timeout"`
-}
-
-func (cfg *Config) Validate() error {
-	if cfg.Port <= 0 {
-		return fmt.Errorf("port must be greater than 0")
-	}
-	if cfg.FunctionName == "" {
-		return fmt.Errorf("function name must be set")
-	}
-	if cfg.FunctionName != "*" && !nameRegexp.MatchString(cfg.FunctionName) {
-		return fmt.Errorf("invalid function name (%s allowed)", nameRegexp.String())
-	}
-	if cfg.DomainSuffix == "" {
-		return fmt.Errorf("domain suffix must be set")
-	}
-	if cfg.UpstreamTimeout <= 0 {
-		return fmt.Errorf("upstream timeout must be greater than 0")
-	}
-	return nil
-}
-
-func (cfg *Config) ExtractAliasAndFunctionName(_ context.Context, r *http.Request) (string, string, error) {
-	var host string
-	if host = r.Header.Get("X-Forwarded-Host"); host == "" {
-		host = r.Host
-	}
-	if raw, _, err := net.SplitHostPort(host); err == nil {
-		host = raw
-	}
-	if !strings.HasSuffix(host, cfg.DomainSuffix) {
-		return "", "", fmt.Errorf("invalid domain suffix (must be %s)", cfg.DomainSuffix)
-	}
-
-	if cfg.FunctionName != "*" { // fixed function name
-		alias := strings.TrimSuffix(host, "."+cfg.DomainSuffix)
-		if !nameRegexp.MatchString(alias) {
-			return "", "", fmt.Errorf("invalid alias (%s allowed)", nameRegexp.String())
-		}
-		return alias, cfg.FunctionName, nil
-	}
-
-	// extract alias and function name from host
-	target := strings.TrimSuffix(host, "."+cfg.DomainSuffix)
-	p := strings.SplitN(target, "-", 2)
-	if len(p) != 2 {
-		return "", "", fmt.Errorf("invalid host name format. must be {alias}-{function}.%s", cfg.DomainSuffix)
-	}
-	alias, functionName := p[0], p[1]
-	if !nameRegexp.MatchString(alias) || !nameRegexp.MatchString(functionName) {
-		return "", "", fmt.Errorf("invalid alias or function name (%s allowed)", nameRegexp.String())
-	}
-	return alias, functionName, nil
-}
 
 type Lamux struct {
 	Config       *Config
@@ -133,7 +69,7 @@ func Run(ctx context.Context) error {
 	mux.HandleFunc("/", l.wrapHandler(l.handleProxy))
 
 	addr := fmt.Sprintf(":%d", cfg.Port)
-	ridge.Run(addr, "/", mux)
+	ridge.RunWithContext(ctx, addr, "/", mux)
 	return nil
 }
 

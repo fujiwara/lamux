@@ -3,15 +3,16 @@ module github.com/fujiwara/lamux
 go 1.21
 
 require (
+	github.com/PumpkinSeed/slog-context v0.1.2
 	github.com/alecthomas/kong v0.9.0
 	github.com/aws/aws-sdk-go-v2 v1.27.1
 	github.com/aws/aws-sdk-go-v2/config v1.27.17
 	github.com/aws/aws-sdk-go-v2/service/lambda v1.54.5
 	github.com/fujiwara/ridge v0.9.2
+	golang.org/x/sys v0.21.0
 )
 
 require (
-	github.com/PumpkinSeed/slog-context v0.1.2 // indirect
 	github.com/aws/aws-lambda-go v1.46.0 // indirect
 	github.com/aws/aws-sdk-go-v2/aws/protocol/eventstream v1.6.2 // indirect
 	github.com/aws/aws-sdk-go-v2/credentials v1.17.17 // indirect
