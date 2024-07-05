@@ -41,8 +41,8 @@ github.com/aws/smithy-go v1.20.2/go.mod h1:krry+ya/rV9RDcV/Q16kpu6ypI4K2czasz0NC
 github.com/davecgh/go-spew v1.1.0/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
 github.com/davecgh/go-spew v1.1.1 h1:vj9j/u1bqnvCEfJOwUhtlOARqs3+rkHYY13jYWTU97c=
 github.com/davecgh/go-spew v1.1.1/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
-github.com/fujiwara/lambda-extensions v0.0.6 h1:1fQoOhi/ocI/kzBoLy+IVpsufb3ZWx8qebPGhb4B4T0=
-github.com/fujiwara/lambda-extensions v0.0.6/go.mod h1:yc//D6j1tC/gOWwJ8fhnngLjo0yMIJqagHHQf8BTx5Y=
+github.com/fujiwara/lambda-extensions v0.0.7 h1:UZYg4mVzAHdfaMMi9PBlv6P3h8Pyi+27oKwN99dZ0NY=
+github.com/fujiwara/lambda-extensions v0.0.7/go.mod h1:yc//D6j1tC/gOWwJ8fhnngLjo0yMIJqagHHQf8BTx5Y=
 github.com/fujiwara/ridge v0.11.3 h1:5Sz/3AgCCZNY5+IWiymFA9eFgdL1HLBMxHWtkXPy1co=
 github.com/fujiwara/ridge v0.11.3/go.mod h1:FUIBF8ZHZ2BpGp14b4oMbAiESQIldmtlJ1WAwt8TUbI=
 github.com/google/go-cmp v0.6.0 h1:ofyhxvXcZhMsU5ulbFiLKl/XBFqE1GSq7atu8tAmTRI=
