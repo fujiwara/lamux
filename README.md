@@ -7,14 +7,14 @@ Lamux is a HTTP multiplexer for AWS Lambda Function aliases.
 ## Usage
 
 ```console
-Usage: lamux --function-name=STRING --domain-suffix=STRING [flags]
+Usage: lamux [flags]
 
 Flags:
-  -h, --help                    Show context-sensitive help.
-      --port=8080               Port to listen on ($LAMUX_PORT)
-      --function-name=STRING    Name of the Lambda function to proxy ($LAMUX_FUNCTION_NAME)
-      --domain-suffix=STRING    Domain suffix to accept requests for ($LAMUX_DOMAIN_SUFFIX)
-      --upstream-timeout=30s    Timeout for upstream requests ($LAMUX_UPSTREAM_TIMEOUT)
+  -h, --help                           Show context-sensitive help.
+      --port=8080                      Port to listen on ($LAMUX_PORT)
+      --function-name="*"              Name of the Lambda function to proxy ($LAMUX_FUNCTION_NAME)
+      --domain-suffix="localdomain"    Domain suffix to accept requests for ($LAMUX_DOMAIN_SUFFIX)
+      --upstream-timeout=30s           Timeout for upstream requests ($LAMUX_UPSTREAM_TIMEOUT)
 ```
 
 Lamux runs an HTTP server that listens on a specified port and forwards requests to a specified Lambda function aliases. The Lambda function alias is identified by its name, and the domain suffix is used to determine which requests should be forwarded to it.

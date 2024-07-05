@@ -81,6 +81,7 @@ func Run(ctx context.Context) error {
 	var mux = http.NewServeMux()
 	mux.HandleFunc("/", l.wrapHandler(l.handleProxy))
 	addr := fmt.Sprintf(":%d", cfg.Port)
+	slog.Info("listening", "addr", addr, "function_name", cfg.FunctionName, "domain_suffix", cfg.DomainSuffix)
 
 	if ridge.AsLambdaExtension() {
 		ec, err := extensions.NewClient()
