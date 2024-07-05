@@ -62,6 +62,24 @@ async function handler(event) {
 }
 ```
 
+### Working as a Lambda extension
+
+Lamux can work as a Lambda extension. In this case, Lamux works the same as the local server mode, but it can be registered as a Lambda extension.
+
+This mode is useful for calling other Lambda functions from the Lambda function running on a VPC without the NAT Gateway. Your Lambda handlers can invoke other Lambda functions by HTTP request to the Lamux extension.
+
+To deploy Lamux as a Lambda extension, you need to create a Lambda layer that contains a `lamux` binary in the `extensions/` directory.
+
+```console
+$ mkdir extensions
+$ cp /path/to/lamux extensions/lamux
+$ zip -r layer.zip extensions
+$ aws lambda publish-layer-version \
+		--layer-name lamux \
+		--zip-file fileb://layer.zip \
+		--compatible-runtimes provided.al2023 provided.al2
+```
+
 ## Installation
 
 [Download the latest release](https://github.com/fujiwara/lamux/releases)
