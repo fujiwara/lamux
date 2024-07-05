@@ -1,5 +1,10 @@
 # Changelog
 
+## [v0.0.8](https://github.com/fujiwara/lamux/compare/v0.0.7...v0.0.8) - 2024-07-05
+- Bump github.com/fujiwara/ridge from 0.10.0 to 0.11.2 by @dependabot in https://github.com/fujiwara/lamux/pull/19
+- Bump github.com/aws/smithy-go from 1.20.2 to 1.20.3 by @dependabot in https://github.com/fujiwara/lamux/pull/18
+- Run as lambda extensions. by @fujiwara in https://github.com/fujiwara/lamux/pull/22
+
 ## [v0.0.7](https://github.com/fujiwara/lamux/compare/v0.0.6...v0.0.7) - 2024-06-10
 
 ## [v0.0.6](https://github.com/fujiwara/lamux/compare/v0.0.5...v0.0.6) - 2024-06-10
