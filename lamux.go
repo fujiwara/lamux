@@ -83,7 +83,7 @@ func Run(ctx context.Context) error {
 	addr := fmt.Sprintf(":%d", cfg.Port)
 
 	if ridge.AsLambdaExtension() {
-		ec, err := extensions.NewClient("Lamux")
+		ec, err := extensions.NewClient()
 		if err != nil {
 			return fmt.Errorf("failed to create extension client: %w", err)
 		}
