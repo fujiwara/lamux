@@ -1,5 +1,8 @@
 # Changelog
 
+## [v0.0.10](https://github.com/fujiwara/lamux/compare/v0.0.9...v0.0.10) - 2024-07-05
+- set default function-name and domain-suffix by @fujiwara in https://github.com/fujiwara/lamux/pull/25
+
 ## [v0.0.9](https://github.com/fujiwara/lamux/compare/v0.0.8...v0.0.9) - 2024-07-05
 - update to lambda-extensions v0.0.7 by @fujiwara in https://github.com/fujiwara/lamux/pull/23
 
