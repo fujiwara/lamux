@@ -16,6 +16,7 @@ import (
 	"github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/service/lambda"
 	"github.com/aws/aws-sdk-go-v2/service/lambda/types"
+	extensions "github.com/fujiwara/lambda-extensions"
 	"github.com/fujiwara/ridge"
 )
 
@@ -79,8 +80,19 @@ func Run(ctx context.Context) error {
 	}
 	var mux = http.NewServeMux()
 	mux.HandleFunc("/", l.wrapHandler(l.handleProxy))
-
 	addr := fmt.Sprintf(":%d", cfg.Port)
+
+	if ridge.AsLambdaExtension() {
+		ec, err := extensions.NewClient("Lamux")
+		if err != nil {
+			return fmt.Errorf("failed to create extension client: %w", err)
+		}
+		if err := ec.Register(ctx); err != nil {
+			return fmt.Errorf("failed to register extension: %w", err)
+		}
+		go ec.Run(ctx)
+	}
+
 	ridge.RunWithContext(ctx, addr, "/", mux)
 	return nil
 }
