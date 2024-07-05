@@ -15,8 +15,8 @@ var functionNameRegexp = regexp.MustCompile(`^[a-zA-Z0-9-]+$`)
 
 type Config struct {
 	Port            int           `help:"Port to listen on" default:"8080" env:"LAMUX_PORT" name:"port"`
-	FunctionName    string        `help:"Name of the Lambda function to proxy" required:"" env:"LAMUX_FUNCTION_NAME" name:"function-name"`
-	DomainSuffix    string        `help:"Domain suffix to accept requests for" required:"" env:"LAMUX_DOMAIN_SUFFIX" name:"domain-suffix"`
+	FunctionName    string        `help:"Name of the Lambda function to proxy" default:"*" env:"LAMUX_FUNCTION_NAME" name:"function-name"`
+	DomainSuffix    string        `help:"Domain suffix to accept requests for" default:"localdomain" env:"LAMUX_DOMAIN_SUFFIX" name:"domain-suffix"`
 	UpstreamTimeout time.Duration `help:"Timeout for upstream requests" default:"30s" env:"LAMUX_UPSTREAM_TIMEOUT" name:"upstream-timeout"`
 }
 
