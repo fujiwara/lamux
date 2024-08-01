@@ -13,7 +13,7 @@ require (
 	github.com/aws/smithy-go v1.20.2
 	github.com/fujiwara/lambda-extensions v0.0.7
 	github.com/fujiwara/ridge v0.11.3
-	golang.org/x/sys v0.21.0
+	golang.org/x/sys v0.22.0
 )
 
 require (
