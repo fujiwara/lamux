@@ -10,7 +10,7 @@ require (
 	github.com/aws/aws-sdk-go-v2 v1.30.0
 	github.com/aws/aws-sdk-go-v2/config v1.27.21
 	github.com/aws/aws-sdk-go-v2/service/lambda v1.55.1
-	github.com/aws/smithy-go v1.20.2
+	github.com/aws/smithy-go v1.20.3
 	github.com/fujiwara/lambda-extensions v0.0.7
 	github.com/fujiwara/ridge v0.11.3
 	golang.org/x/sys v0.21.0
