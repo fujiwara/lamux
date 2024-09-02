@@ -33,7 +33,7 @@ The forwarded Lambda functions should process Function URLs payload, but these f
 Lambda alias names allow alphanumeric characters, hyphens, and underscores, but domain names do not allow underscores. And more, lamux uses `-` as a delimiter between the alias and the function name.
 
 - alias name pattern: `^[a-zA-Z0-9]+$` (`-` and `_` are not allowed)
-- function name allows: `^[a-zA-Z0-9-_]+$` (`-` is allowed, `_` is not allowed)
+- function name allows: `^[a-zA-Z0-9-]+$` (`-` is allowed, `_` is not allowed)
 
 ### Route to multiple Lambda functions
 
