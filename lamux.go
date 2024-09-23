@@ -8,6 +8,7 @@ import (
 	"log/slog"
 	"net/http"
 	"os"
+	"sync"
 	"time"
 
 	slogcontext "github.com/PumpkinSeed/slog-context"
@@ -16,6 +17,7 @@ import (
 	"github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/service/lambda"
 	"github.com/aws/aws-sdk-go-v2/service/lambda/types"
+	"github.com/aws/aws-sdk-go-v2/service/sts"
 	extensions "github.com/fujiwara/lambda-extensions"
 	"github.com/fujiwara/ridge"
 	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
@@ -25,9 +27,12 @@ import (
 var Version = "current"
 
 type Lamux struct {
-	Config       *Config
+	Config *Config
+
+	accountID    string
 	awsCfg       aws.Config
 	lambdaClient lambdaClient
+	once         sync.Once
 }
 
 type lambdaClient interface {
@@ -47,6 +52,19 @@ func NewLamux(cfg *Config) (*Lamux, error) {
 		awsCfg:       awsCfg,
 		lambdaClient: lambda.NewFromConfig(awsCfg),
 	}, nil
+}
+
+func (l *Lamux) AccountID() string {
+	l.once.Do(func() {
+		stsClient := sts.NewFromConfig(l.awsCfg)
+		resp, err := stsClient.GetCallerIdentity(context.Background(), &sts.GetCallerIdentityInput{})
+		if err != nil {
+			slog.Error("failed to get account id", "error", err)
+			return
+		}
+		l.accountID = *resp.Account
+	})
+	return l.accountID
 }
 
 type handlerFunc func(ctx context.Context, w http.ResponseWriter, r *http.Request) error
@@ -112,7 +130,13 @@ func Run(ctx context.Context) error {
 	}
 
 	addr := fmt.Sprintf(":%d", cfg.Port)
-	slog.Info("listening", "addr", addr, "function_name", cfg.FunctionName, "domain_suffix", cfg.DomainSuffix)
+	slog.Info("starting",
+		"addr", addr,
+		"function_name", cfg.FunctionName,
+		"domain_suffix", cfg.DomainSuffix,
+		"trace_config", cfg.TraceConfig,
+		"account_id", l.AccountID(),
+	)
 	r := ridge.New(addr, "/", handler)
 	r.TermHandler = func() {
 		otelShutdown(context.Background())
@@ -210,14 +234,16 @@ func (l *Lamux) handleProxy(ctx context.Context, w http.ResponseWriter, r *http.
 
 func (l *Lamux) Invoke(ctx context.Context, functionName, alias string, b []byte) (*lambda.InvokeOutput, error) {
 	ctx, span := tracer.Start(ctx, "Invoke")
+
+	fnArn := fmt.Sprintf("arn:aws:lambda:%s:%s:function:%s:%s", l.awsCfg.Region, l.AccountID(), functionName, alias)
 	span.SetAttributes(
 		attribute.KeyValue{
-			Key:   attribute.Key("function_name"),
-			Value: attribute.StringValue(functionName),
+			Key:   attribute.Key("cloud.resource_id"),
+			Value: attribute.StringValue(fnArn),
 		},
 		attribute.KeyValue{
-			Key:   attribute.Key("alias"),
-			Value: attribute.StringValue(alias),
+			Key:   attribute.Key("cloud.account_id"),
+			Value: attribute.StringValue(l.AccountID()),
 		},
 	)
 	defer span.End()
@@ -252,6 +278,16 @@ func (l *Lamux) Invoke(ctx context.Context, functionName, alias string, b []byte
 		span.RecordError(err)
 		return nil, fmt.Errorf("failed to invoke: %w", err)
 	}
+	span.SetAttributes(
+		attribute.KeyValue{
+			Key:   attribute.Key("lambda.executed_version"),
+			Value: attribute.StringValue(*resp.ExecutedVersion),
+		},
+		attribute.KeyValue{
+			Key:   attribute.Key("lambda.status_code"),
+			Value: attribute.IntValue(int(resp.StatusCode)),
+		},
+	)
 	if resp.FunctionError != nil {
 		span.RecordError(fmt.Errorf(*resp.FunctionError))
 		return nil, newHandlerError(fmt.Errorf(*resp.FunctionError), http.StatusInternalServerError)
