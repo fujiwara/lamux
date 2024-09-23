@@ -18,6 +18,19 @@ type Config struct {
 	FunctionName    string        `help:"Name of the Lambda function to proxy" default:"*" env:"LAMUX_FUNCTION_NAME" name:"function-name"`
 	DomainSuffix    string        `help:"Domain suffix to accept requests for" default:"localdomain" env:"LAMUX_DOMAIN_SUFFIX" name:"domain-suffix"`
 	UpstreamTimeout time.Duration `help:"Timeout for upstream requests" default:"30s" env:"LAMUX_UPSTREAM_TIMEOUT" name:"upstream-timeout"`
+	Version         bool          `help:"Show version information" name:"version"`
+
+	TraceConfig
+}
+
+type TraceConfig struct {
+	TraceEndpoint string            `help:"Otel trace endpoint (e.g. localhost:4318)" env:"LAMUX_TRACE_ENDPOINT" name:"trace-endpoint"`
+	TraceInsecure bool              `help:"Disable TLS for Otel trace endpoint" env:"LAMUX_TRACE_INSECURE" name:"trace-insecure"`
+	TraceProtocol string            `help:"Otel trace protocol" env:"LAMUX_TRACE_PROTOCOL" name:"trace-protocol" default:"http" enum:"http,grpc"`
+	TraceService  string            `help:"Otel trace service name" env:"LAMUX_TRACE_SERVICE" name:"trace-service" default:"lamux"`
+	TraceHeaders  map[string]string `help:"Additional headers for Otel trace endpoint (key1=value1;key2=value2)" env:"LAMUX_TRACE_HEADERS" name:"trace-headers"`
+
+	enableTrace bool
 }
 
 func (cfg *Config) Validate() error {
@@ -35,6 +48,10 @@ func (cfg *Config) Validate() error {
 	}
 	if cfg.UpstreamTimeout <= 0 {
 		return fmt.Errorf("upstream timeout must be greater than 0")
+	}
+
+	if cfg.TraceConfig.TraceEndpoint != "" {
+		cfg.TraceConfig.enableTrace = true
 	}
 	return nil
 }

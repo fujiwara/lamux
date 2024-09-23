@@ -18,7 +18,11 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/lambda/types"
 	extensions "github.com/fujiwara/lambda-extensions"
 	"github.com/fujiwara/ridge"
+	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
+	"go.opentelemetry.io/otel/attribute"
 )
+
+var Version = "current"
 
 type Lamux struct {
 	Config       *Config
@@ -73,15 +77,28 @@ func Run(ctx context.Context) error {
 
 	cfg := &Config{}
 	kong.Parse(cfg)
+	if cfg.Version {
+		fmt.Println(Version)
+		return nil
+	}
 
 	l, err := NewLamux(cfg)
 	if err != nil {
 		return err
 	}
-	var mux = http.NewServeMux()
+	otelShutdown, err := l.setupOtelSDK(ctx)
+	if err != nil {
+		return fmt.Errorf("failed to setup Otel SDK: %w", err)
+	}
+
+	mux := http.NewServeMux()
 	mux.HandleFunc("/", l.wrapHandler(l.handleProxy))
-	addr := fmt.Sprintf(":%d", cfg.Port)
-	slog.Info("listening", "addr", addr, "function_name", cfg.FunctionName, "domain_suffix", cfg.DomainSuffix)
+	var handler http.Handler
+	if l.Config.TraceConfig.enableTrace {
+		handler = otelhttp.NewHandler(mux, "/")
+	} else {
+		handler = mux
+	}
 
 	if ridge.AsLambdaExtension() {
 		ec, err := extensions.NewClient()
@@ -94,7 +111,13 @@ func Run(ctx context.Context) error {
 		go ec.Run(ctx)
 	}
 
-	ridge.RunWithContext(ctx, addr, "/", mux)
+	addr := fmt.Sprintf(":%d", cfg.Port)
+	slog.Info("listening", "addr", addr, "function_name", cfg.FunctionName, "domain_suffix", cfg.DomainSuffix)
+	r := ridge.New(addr, "/", handler)
+	r.TermHandler = func() {
+		otelShutdown(context.Background())
+	}
+	r.RunWithContext(ctx)
 	return nil
 }
 
@@ -186,8 +209,22 @@ func (l *Lamux) handleProxy(ctx context.Context, w http.ResponseWriter, r *http.
 }
 
 func (l *Lamux) Invoke(ctx context.Context, functionName, alias string, b []byte) (*lambda.InvokeOutput, error) {
+	ctx, span := tracer.Start(ctx, "Invoke")
+	span.SetAttributes(
+		attribute.KeyValue{
+			Key:   attribute.Key("function_name"),
+			Value: attribute.StringValue(functionName),
+		},
+		attribute.KeyValue{
+			Key:   attribute.Key("alias"),
+			Value: attribute.StringValue(alias),
+		},
+	)
+	defer span.End()
+
 	ctx, cancel := context.WithTimeout(ctx, l.Config.UpstreamTimeout)
 	defer cancel()
+
 	input := &lambda.InvokeInput{
 		FunctionName: aws.String(functionName),
 		Qualifier:    aws.String(alias),
@@ -203,6 +240,7 @@ func (l *Lamux) Invoke(ctx context.Context, functionName, alias string, b []byte
 				err = newHandlerError(ctx.Err(), http.StatusGatewayTimeout)
 			default:
 			}
+			span.RecordError(err)
 			return nil, fmt.Errorf("upstream timeout: %w", err)
 		}
 		var enf *types.ResourceNotFoundException
@@ -211,9 +249,11 @@ func (l *Lamux) Invoke(ctx context.Context, functionName, alias string, b []byte
 		} else {
 			err = newHandlerError(err, http.StatusBadGateway)
 		}
+		span.RecordError(err)
 		return nil, fmt.Errorf("failed to invoke: %w", err)
 	}
 	if resp.FunctionError != nil {
+		span.RecordError(fmt.Errorf(*resp.FunctionError))
 		return nil, newHandlerError(fmt.Errorf(*resp.FunctionError), http.StatusInternalServerError)
 	}
 	return resp, nil
