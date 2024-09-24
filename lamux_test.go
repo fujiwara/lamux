@@ -44,8 +44,11 @@ func (m *mockClient) Invoke(ctx context.Context, input *lambda.InvokeInput, optF
 		}
 	}
 	return &lambda.InvokeOutput{
-		StatusCode:    m.code,
-		FunctionError: m.functionError,
+		StatusCode:      m.code,
+		FunctionError:   m.functionError,
+		ExecutedVersion: aws.String("1"),
+		LogResult:       aws.String("dummy"),
+		Payload:         input.Payload,
 	}, nil
 }
 
@@ -128,6 +131,7 @@ func TestClient(t *testing.T) {
 				t.Fatalf("unexpected error: %v", err)
 			}
 			app.SetClient(tc.client)
+			app.SetAccountID("123456789012")
 
 			var code int
 			resp, err := app.Invoke(context.Background(), tc.functionName, tc.alias, nil)

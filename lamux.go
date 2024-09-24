@@ -22,6 +22,7 @@ import (
 	"github.com/fujiwara/ridge"
 	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
 	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/codes"
 )
 
 var Version = "current"
@@ -54,10 +55,13 @@ func NewLamux(cfg *Config) (*Lamux, error) {
 	}, nil
 }
 
-func (l *Lamux) AccountID() string {
+func (l *Lamux) AccountID(ctx context.Context) string {
 	l.once.Do(func() {
+		if l.accountID != "" {
+			return
+		}
 		stsClient := sts.NewFromConfig(l.awsCfg)
-		resp, err := stsClient.GetCallerIdentity(context.Background(), &sts.GetCallerIdentityInput{})
+		resp, err := stsClient.GetCallerIdentity(ctx, &sts.GetCallerIdentityInput{})
 		if err != nil {
 			slog.Error("failed to get account id", "error", err)
 			return
@@ -104,7 +108,7 @@ func Run(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
-	otelShutdown, err := l.setupOtelSDK(ctx)
+	otelShutdown, err := setupOtelSDK(ctx, &cfg.TraceConfig)
 	if err != nil {
 		return fmt.Errorf("failed to setup Otel SDK: %w", err)
 	}
@@ -135,7 +139,7 @@ func Run(ctx context.Context) error {
 		"function_name", cfg.FunctionName,
 		"domain_suffix", cfg.DomainSuffix,
 		"trace_config", cfg.TraceConfig,
-		"account_id", l.AccountID(),
+		"account_id", l.AccountID(ctx),
 	)
 	r := ridge.New(addr, "/", handler)
 	r.TermHandler = func() {
@@ -235,7 +239,7 @@ func (l *Lamux) handleProxy(ctx context.Context, w http.ResponseWriter, r *http.
 func (l *Lamux) Invoke(ctx context.Context, functionName, alias string, b []byte) (*lambda.InvokeOutput, error) {
 	ctx, span := tracer.Start(ctx, "Invoke")
 
-	fnArn := fmt.Sprintf("arn:aws:lambda:%s:%s:function:%s:%s", l.awsCfg.Region, l.AccountID(), functionName, alias)
+	fnArn := fmt.Sprintf("arn:aws:lambda:%s:%s:function:%s:%s", l.awsCfg.Region, l.AccountID(ctx), functionName, alias)
 	span.SetAttributes(
 		attribute.KeyValue{
 			Key:   attribute.Key("cloud.resource_id"),
@@ -243,7 +247,7 @@ func (l *Lamux) Invoke(ctx context.Context, functionName, alias string, b []byte
 		},
 		attribute.KeyValue{
 			Key:   attribute.Key("cloud.account_id"),
-			Value: attribute.StringValue(l.AccountID()),
+			Value: attribute.StringValue(l.AccountID(ctx)),
 		},
 	)
 	defer span.End()
@@ -266,7 +270,7 @@ func (l *Lamux) Invoke(ctx context.Context, functionName, alias string, b []byte
 				err = newHandlerError(ctx.Err(), http.StatusGatewayTimeout)
 			default:
 			}
-			span.RecordError(err)
+			span.SetStatus(codes.Error, err.Error())
 			return nil, fmt.Errorf("upstream timeout: %w", err)
 		}
 		var enf *types.ResourceNotFoundException
@@ -275,7 +279,7 @@ func (l *Lamux) Invoke(ctx context.Context, functionName, alias string, b []byte
 		} else {
 			err = newHandlerError(err, http.StatusBadGateway)
 		}
-		span.RecordError(err)
+		span.SetStatus(codes.Error, err.Error())
 		return nil, fmt.Errorf("failed to invoke: %w", err)
 	}
 	span.SetAttributes(
@@ -289,7 +293,7 @@ func (l *Lamux) Invoke(ctx context.Context, functionName, alias string, b []byte
 		},
 	)
 	if resp.FunctionError != nil {
-		span.RecordError(fmt.Errorf(*resp.FunctionError))
+		span.SetStatus(codes.Error, *resp.FunctionError)
 		return nil, newHandlerError(fmt.Errorf(*resp.FunctionError), http.StatusInternalServerError)
 	}
 	return resp, nil

@@ -23,16 +23,6 @@ type Config struct {
 	TraceConfig
 }
 
-type TraceConfig struct {
-	TraceEndpoint string            `help:"Otel trace endpoint (e.g. localhost:4318)" env:"LAMUX_TRACE_ENDPOINT" name:"trace-endpoint"`
-	TraceInsecure bool              `help:"Disable TLS for Otel trace endpoint" env:"LAMUX_TRACE_INSECURE" name:"trace-insecure"`
-	TraceProtocol string            `help:"Otel trace protocol" env:"LAMUX_TRACE_PROTOCOL" name:"trace-protocol" default:"http" enum:"http,grpc"`
-	TraceService  string            `help:"Otel trace service name" env:"LAMUX_TRACE_SERVICE" name:"trace-service" default:"lamux"`
-	TraceHeaders  map[string]string `help:"Additional headers for Otel trace endpoint (key1=value1;key2=value2)" env:"LAMUX_TRACE_HEADERS" name:"trace-headers"`
-
-	enableTrace bool
-}
-
 func (cfg *Config) Validate() error {
 	if cfg.Port < 0 {
 		return fmt.Errorf("port must not be negative")
