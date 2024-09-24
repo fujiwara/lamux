@@ -26,6 +26,7 @@ type TraceConfig struct {
 	TraceProtocol string            `help:"Otel trace protocol" env:"OTEL_EXPORTER_OTLP_PROTOCOL" name:"trace-protocol" default:"http/protobuf" enum:"http/protobuf,grpc"`
 	TraceHeaders  map[string]string `help:"Additional headers for Otel trace endpoint (key1=value1;key2=value2)" env:"OTEL_EXPORTER_OTLP_HEADERS" name:"trace-headers"`
 	TraceService  string            `help:"Service name for Otel trace" env:"OTEL_SERVICE_NAME" name:"trace-service" default:"lamux"`
+	TraceBatch    bool              `help:"Enable batcher for Otel trace" env:"OTEL_EXPORTER_OTLP_BATCH" name:"trace-batch"`
 
 	enableTrace bool
 }
@@ -126,10 +127,13 @@ func newTraceProvider(ctx context.Context, tc *TraceConfig) (*trace.TracerProvid
 		return nil, fmt.Errorf("failed to create resource: %w", err)
 	}
 
-	traceProvider := trace.NewTracerProvider(
-		trace.WithSyncer(traceExporter),
-		// trace.WithBatcher(traceExporter), TODO: configure batcher
+	opts := []trace.TracerProviderOption{
 		trace.WithResource(resources),
-	)
-	return traceProvider, nil
+	}
+	if tc.TraceBatch {
+		opts = append(opts, trace.WithBatcher(traceExporter))
+	} else {
+		opts = append(opts, trace.WithSyncer(traceExporter))
+	}
+	return trace.NewTracerProvider(opts...), nil
 }
