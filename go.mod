@@ -13,6 +13,7 @@ require (
 	github.com/aws/smithy-go v1.20.2
 	github.com/fujiwara/lambda-extensions v0.0.7
 	github.com/fujiwara/ridge v0.11.3
+	github.com/mashiike/go-otel-json-exporters/otlptracejson v0.0.0-20240925062218-f13fdc2ad62e
 	go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp v0.55.0
 	go.opentelemetry.io/otel v1.30.0
 	go.opentelemetry.io/otel/exporters/otlp/otlptrace v1.30.0
@@ -52,7 +53,7 @@ require (
 	github.com/aws/aws-sdk-go-v2/service/internal/presigned-url v1.11.14 // indirect
 	github.com/aws/aws-sdk-go-v2/service/sso v1.21.1 // indirect
 	github.com/aws/aws-sdk-go-v2/service/ssooidc v1.25.1 // indirect
-	github.com/aws/aws-sdk-go-v2/service/sts v1.29.1 // indirect; indirect1	github.com/jmespath/go-jmespath v0.4.0 // indirect
+	github.com/aws/aws-sdk-go-v2/service/sts v1.29.1 // indirect1	github.com/jmespath/go-jmespath v0.4.0 // indirect
 	github.com/jmespath/go-jmespath v0.4.0 // indirect
 	github.com/pires/go-proxyproto v0.7.0 // indirect
 )

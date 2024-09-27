@@ -116,7 +116,7 @@ func Run(ctx context.Context) error {
 	mux := http.NewServeMux()
 	mux.HandleFunc("/", l.wrapHandler(l.handleProxy))
 	var handler http.Handler
-	if l.Config.TraceConfig.enableTrace {
+	if l.Config.TraceConfig.Enabled() {
 		handler = otelhttp.NewHandler(mux, "/")
 	} else {
 		handler = mux

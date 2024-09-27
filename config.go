@@ -39,10 +39,6 @@ func (cfg *Config) Validate() error {
 	if cfg.UpstreamTimeout <= 0 {
 		return fmt.Errorf("upstream timeout must be greater than 0")
 	}
-
-	if cfg.TraceConfig.TraceEndpoint != "" {
-		cfg.TraceConfig.enableTrace = true
-	}
 	return nil
 }
 

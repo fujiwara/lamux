@@ -5,7 +5,9 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"os"
 
+	"github.com/mashiike/go-otel-json-exporters/otlptracejson"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/exporters/otlp/otlptrace"
 	"go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracegrpc"
@@ -21,21 +23,24 @@ var (
 )
 
 type TraceConfig struct {
-	TraceEndpoint string            `help:"Otel trace endpoint (e.g. localhost:4318)" env:"OTEL_EXPORTER_OTLP_ENDPOINT" name:"trace-endpoint"`
+	TraceStdout   bool              `help:"Enable stdout exporter for Otel trace" env:"OTEL_EXPORTER_STDOUT" name:"trace-stdout" group:"traceOutput" xor:"traceOutput"`
+	TraceEndpoint string            `help:"Otel trace endpoint (e.g. localhost:4318)" env:"OTEL_EXPORTER_OTLP_ENDPOINT" name:"trace-endpoint" group:"traceOutput" xor:"traceOutput"`
 	TraceInsecure bool              `help:"Disable TLS for Otel trace endpoint" env:"OTEL_EXPORTER_OTLP_INSECURE" name:"trace-insecure"`
 	TraceProtocol string            `help:"Otel trace protocol" env:"OTEL_EXPORTER_OTLP_PROTOCOL" name:"trace-protocol" default:"http/protobuf" enum:"http/protobuf,grpc"`
 	TraceHeaders  map[string]string `help:"Additional headers for Otel trace endpoint (key1=value1;key2=value2)" env:"OTEL_EXPORTER_OTLP_HEADERS" name:"trace-headers"`
 	TraceService  string            `help:"Service name for Otel trace" env:"OTEL_SERVICE_NAME" name:"trace-service" default:"lamux"`
 	TraceBatch    bool              `help:"Enable batcher for Otel trace" env:"OTEL_EXPORTER_OTLP_BATCH" name:"trace-batch"`
+}
 
-	enableTrace bool
+func (tc *TraceConfig) Enabled() bool {
+	return tc.TraceStdout || tc.TraceEndpoint != ""
 }
 
 func setupOtelSDK(ctx context.Context, tc *TraceConfig) (shutdown func(context.Context) error, err error) {
-	if !tc.enableTrace {
+	if !tc.Enabled() {
 		return func(context.Context) error { return nil }, nil
 	}
-	slog.InfoContext(ctx, "setting up Otel SDK")
+	slog.InfoContext(ctx, "setting up Otel SDK", "config", tc)
 
 	var shutdownFuncs []func(context.Context) error
 
@@ -80,6 +85,40 @@ func newPropagator() propagation.TextMapPropagator {
 }
 
 func newTraceProvider(ctx context.Context, tc *TraceConfig) (*trace.TracerProvider, error) {
+	traceExporter, err := newTraceExporter(ctx, tc)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create trace exporter: %w", err)
+	}
+
+	resources, err := resource.New(
+		ctx,
+		resource.WithProcess(),
+		resource.WithTelemetrySDK(),
+		resource.WithAttributes(
+			semconv.ServiceName(tc.TraceService),
+			semconv.ServiceVersion(Version),
+		),
+	)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create resource: %w", err)
+	}
+
+	opts := []trace.TracerProviderOption{
+		trace.WithResource(resources),
+	}
+	if tc.TraceBatch {
+		opts = append(opts, trace.WithBatcher(traceExporter))
+	} else {
+		opts = append(opts, trace.WithSyncer(traceExporter))
+	}
+	return trace.NewTracerProvider(opts...), nil
+}
+
+func newTraceExporter(ctx context.Context, tc *TraceConfig) (trace.SpanExporter, error) {
+	if tc.TraceStdout {
+		return otlptracejson.New(ctx, otlptracejson.WithWriter(os.Stdout))
+	}
+
 	var client otlptrace.Client
 	switch tc.TraceProtocol {
 	case "http/protobuf":
@@ -109,31 +148,5 @@ func newTraceProvider(ctx context.Context, tc *TraceConfig) (*trace.TracerProvid
 		return nil, fmt.Errorf("unsupported trace protocol: %s", tc.TraceProtocol)
 	}
 
-	traceExporter, err := otlptrace.New(ctx, client)
-	if err != nil {
-		return nil, fmt.Errorf("failed to create trace exporter: %w", err)
-	}
-
-	resources, err := resource.New(
-		ctx,
-		resource.WithProcess(),
-		resource.WithTelemetrySDK(),
-		resource.WithAttributes(
-			semconv.ServiceName(tc.TraceService),
-			semconv.ServiceVersion(Version),
-		),
-	)
-	if err != nil {
-		return nil, fmt.Errorf("failed to create resource: %w", err)
-	}
-
-	opts := []trace.TracerProviderOption{
-		trace.WithResource(resources),
-	}
-	if tc.TraceBatch {
-		opts = append(opts, trace.WithBatcher(traceExporter))
-	} else {
-		opts = append(opts, trace.WithSyncer(traceExporter))
-	}
-	return trace.NewTracerProvider(opts...), nil
+	return otlptrace.New(ctx, client)
 }
