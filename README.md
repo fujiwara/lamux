@@ -10,11 +10,22 @@ Lamux is a HTTP multiplexer for AWS Lambda Function aliases.
 Usage: lamux [flags]
 
 Flags:
-  -h, --help                           Show context-sensitive help.
-      --port=8080                      Port to listen on ($LAMUX_PORT)
-      --function-name="*"              Name of the Lambda function to proxy ($LAMUX_FUNCTION_NAME)
-      --domain-suffix="localdomain"    Domain suffix to accept requests for ($LAMUX_DOMAIN_SUFFIX)
-      --upstream-timeout=30s           Timeout for upstream requests ($LAMUX_UPSTREAM_TIMEOUT)
+  -h, --help                              Show context-sensitive help.
+      --port=8080                         Port to listen on ($LAMUX_PORT)
+      --function-name="*"                 Name of the Lambda function to proxy ($LAMUX_FUNCTION_NAME)
+      --domain-suffix="localdomain"       Domain suffix to accept requests for ($LAMUX_DOMAIN_SUFFIX)
+      --upstream-timeout=30s              Timeout for upstream requests ($LAMUX_UPSTREAM_TIMEOUT)
+      --version                           Show version information
+      --trace-insecure                    Disable TLS for Otel trace endpoint ($OTEL_EXPORTER_OTLP_INSECURE)
+      --trace-protocol="http/protobuf"    Otel trace protocol ($OTEL_EXPORTER_OTLP_PROTOCOL)
+      --trace-headers=KEY=VALUE;...       Additional headers for Otel trace endpoint (key1=value1;key2=value2)
+                                          ($OTEL_EXPORTER_OTLP_HEADERS)
+      --trace-service="lamux"             Service name for Otel trace ($OTEL_SERVICE_NAME)
+      --trace-batch                       Enable batcher for Otel trace ($OTEL_EXPORTER_OTLP_BATCH)
+
+traceOutput
+  --trace-stdout             Enable stdout exporter for Otel trace ($OTEL_EXPORTER_STDOUT)
+  --trace-endpoint=STRING    Otel trace endpoint (e.g. localhost:4318) ($OTEL_EXPORTER_OTLP_ENDPOINT)
 ```
 
 Lamux runs an HTTP server that listens on a specified port and forwards requests to a specified Lambda function aliases. The Lambda function alias is identified by its name, and the domain suffix is used to determine which requests should be forwarded to it.
@@ -151,6 +162,26 @@ Timeout for upstream requests. Default is `30s`.
 
 This setting is affected by the Lambda function timeout. If the Lambda function timeout is less than the `--upstream-timeout`, it will time out before the `--upstream-timeout`.
 
+
+### OpenTelemetry tracing support
+
+Lamux supports OpenTelemetry tracing.
+
+When either of the following environment variables is set, Lamux will enable tracing.
+- `OTEL_EXPORTER_OTLP_ENDPOINT` (e.g., `localhost:4318`)
+  - When you set this environment variable, Lamux will enable tracing and send traces to the specified endpoint.
+- `OTEL_EXPORTER_STDOUT`
+  - When you set this environment variable to `true`, Lamux will enable the stdout exporter for the trace.
+
+Other optional environment variables for tracing:
+- `OTEL_EXPORTER_OTLP_PROTOCOL` (`grpc` or `http/protobuf`, default `http/protobuf`)
+- `OTEL_EXPORTER_OTLP_INSECURE` (optional)
+- `OTEL_EXPORTER_OTLP_HEADERS` (e.g., `key1=value1;key2=value2`)
+- `OTEL_SERVICE_NAME` (default `lamux`)
+- `OTEL_EXPORTER_OTLP_BATCH` (optional, default `false`)
+  - When you set this environment variable to `true`, Lamux will enable the batcher for the trace exporter.
+  - By default, the batcher is disabled, and the exporter sends traces synchronously. This is useful for running Lamux on Lambda Function URLs or debugging.
+  - The batcher is useful for running Lamux on ECS tasks or EC2 instances (which means "long-running processes").
 
 ## LICENSE
 
