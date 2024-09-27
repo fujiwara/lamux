@@ -11,7 +11,6 @@ type LambdaClient lambdaClient
 
 func (l *Lamux) SetTestClient(client LambdaClient) {
 	l.awsCfg = aws.Config{}
-	l.SetAccountID("123456789012")
 	l.lambdaClient = client
 }
 

@@ -155,7 +155,6 @@ func TestClient(t *testing.T) {
 func TestProxy(t *testing.T) {
 	r, _ := http.NewRequest("GET", "/", nil)
 	r.Header.Set("X-Forwarded-Host", "test.example.net")
-	r.Header.Set("Lambda-Runtime-Invoked-Function-Arn", "arn:aws:lambda:us-west-2:012345678901:function:test-func:1")
 	app, _ := lamux.NewLamux(&lamux.Config{
 		FunctionName:    "test-func",
 		DomainSuffix:    "example.net",
@@ -164,15 +163,11 @@ func TestProxy(t *testing.T) {
 	app.SetTestClient(&mockClient{
 		code: 200,
 	})
-	app.SetAccountID("")
 	w := httptest.NewRecorder()
 	if err := app.HandleProxy(context.Background(), w, r); err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
 	if e, a := http.StatusOK, w.Code; e != a {
 		t.Errorf("expect %d, got %d", e, a)
-	}
-	if id := app.AccountID(context.Background()); id != "012345678901" {
-		t.Errorf("expect %s, got %s", "012345678901", id)
 	}
 }
