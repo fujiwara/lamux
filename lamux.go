@@ -14,6 +14,7 @@ import (
 	slogcontext "github.com/PumpkinSeed/slog-context"
 	"github.com/alecthomas/kong"
 	"github.com/aws/aws-sdk-go-v2/aws"
+	"github.com/aws/aws-sdk-go-v2/aws/arn"
 	"github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/service/lambda"
 	"github.com/aws/aws-sdk-go-v2/service/lambda/types"
@@ -34,6 +35,7 @@ type Lamux struct {
 	awsCfg       aws.Config
 	lambdaClient lambdaClient
 	once         sync.Once
+	mu           sync.Mutex
 }
 
 type lambdaClient interface {
@@ -55,15 +57,25 @@ func NewLamux(cfg *Config) (*Lamux, error) {
 	}, nil
 }
 
+func (l *Lamux) SetAccountID(accountID string) {
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	l.accountID = accountID
+}
+
 func (l *Lamux) AccountID(ctx context.Context) string {
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	if l.accountID != "" {
+		return l.accountID
+	}
 	l.once.Do(func() {
-		if l.accountID != "" {
-			return
-		}
 		stsClient := sts.NewFromConfig(l.awsCfg)
+		ctx, cancel := context.WithTimeout(ctx, 1*time.Second)
+		defer cancel()
 		resp, err := stsClient.GetCallerIdentity(ctx, &sts.GetCallerIdentityInput{})
 		if err != nil {
-			slog.Error("failed to get account id", "error", err)
+			slog.WarnContext(ctx, "failed to get account id", "error", err)
 			return
 		}
 		l.accountID = *resp.Account
@@ -195,7 +207,29 @@ func setRequestContext(ctx context.Context, r *http.Request) context.Context {
 	return ctx
 }
 
+func (l *Lamux) resolveAccountIDOnRuntime(ctx context.Context, r *http.Request) error {
+	if l.AccountID(ctx) != "" {
+		return nil
+	}
+	if fnArn := r.Header.Get("Lambda-Runtime-Invoked-Function-Arn"); fnArn == "" {
+		return nil
+	} else {
+		a, err := arn.Parse(fnArn)
+		if err != nil {
+			slog.WarnContext(ctx, "failed to parse ARN", "error", err)
+		} else {
+			slog.InfoContext(ctx, "resolve account id on runtime", "account_id", a.AccountID)
+			l.SetAccountID(a.AccountID)
+		}
+	}
+	return nil
+}
+
 func (l *Lamux) handleProxy(ctx context.Context, w http.ResponseWriter, r *http.Request) error {
+	if err := l.resolveAccountIDOnRuntime(ctx, r); err != nil {
+		slog.WarnContext(ctx, "failed to resolve account id", "error", err)
+	}
+
 	alias, functionName, err := l.Config.ExtractAliasAndFunctionName(ctx, r)
 	if err != nil {
 		err = newHandlerError(err, http.StatusBadRequest)

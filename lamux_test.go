@@ -3,6 +3,9 @@ package lamux_test
 import (
 	"context"
 	"errors"
+	"fmt"
+	"net/http"
+	"net/http/httptest"
 	"testing"
 	"time"
 
@@ -25,7 +28,7 @@ func (m *mockClient) Invoke(ctx context.Context, input *lambda.InvokeInput, optF
 			Message: aws.String("Resource not found"),
 		}
 	}
-	if aws.ToString(input.Qualifier) != "test-alias" {
+	if aws.ToString(input.Qualifier) != "test" {
 		return nil, &types.ResourceNotFoundException{
 			Message: aws.String("Resource not found"),
 		}
@@ -48,7 +51,7 @@ func (m *mockClient) Invoke(ctx context.Context, input *lambda.InvokeInput, optF
 		FunctionError:   m.functionError,
 		ExecutedVersion: aws.String("1"),
 		LogResult:       aws.String("dummy"),
-		Payload:         input.Payload,
+		Payload:         []byte(fmt.Sprintf(`{"statusCode":%d}`, m.code)),
 	}, nil
 }
 
@@ -67,7 +70,7 @@ var clientTestCases = []clientTestCase{
 			code: 200,
 		},
 		functionName: "test-func",
-		alias:        "test-alias",
+		alias:        "test",
 		expectCode:   200,
 	},
 	{
@@ -76,7 +79,7 @@ var clientTestCases = []clientTestCase{
 			code: 200,
 		},
 		functionName: "not-found",
-		alias:        "test-alias",
+		alias:        "test",
 		expectCode:   404,
 	},
 	{
@@ -94,7 +97,7 @@ var clientTestCases = []clientTestCase{
 			code: 500,
 		},
 		functionName: "test-func",
-		alias:        "test-alias",
+		alias:        "test",
 		expectCode:   502,
 	},
 	{
@@ -104,7 +107,7 @@ var clientTestCases = []clientTestCase{
 			latency: 2 * time.Second,
 		},
 		functionName: "test-func",
-		alias:        "test-alias",
+		alias:        "test",
 		expectCode:   504,
 	},
 	{
@@ -114,7 +117,7 @@ var clientTestCases = []clientTestCase{
 			functionError: aws.String("MethodNotAllowed"),
 		},
 		functionName: "test-func",
-		alias:        "test-alias",
+		alias:        "test",
 		expectCode:   500,
 	},
 }
@@ -130,8 +133,7 @@ func TestClient(t *testing.T) {
 			if err != nil {
 				t.Fatalf("unexpected error: %v", err)
 			}
-			app.SetClient(tc.client)
-			app.SetAccountID("123456789012")
+			app.SetTestClient(tc.client)
 
 			var code int
 			resp, err := app.Invoke(context.Background(), tc.functionName, tc.alias, nil)
@@ -147,5 +149,30 @@ func TestClient(t *testing.T) {
 				t.Errorf("expect %d, got %d", e, a)
 			}
 		})
+	}
+}
+
+func TestProxy(t *testing.T) {
+	r, _ := http.NewRequest("GET", "/", nil)
+	r.Header.Set("X-Forwarded-Host", "test.example.net")
+	r.Header.Set("Lambda-Runtime-Invoked-Function-Arn", "arn:aws:lambda:us-west-2:012345678901:function:test-func:1")
+	app, _ := lamux.NewLamux(&lamux.Config{
+		FunctionName:    "test-func",
+		DomainSuffix:    "example.net",
+		UpstreamTimeout: time.Second,
+	})
+	app.SetTestClient(&mockClient{
+		code: 200,
+	})
+	app.SetAccountID("")
+	w := httptest.NewRecorder()
+	if err := app.HandleProxy(context.Background(), w, r); err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if e, a := http.StatusOK, w.Code; e != a {
+		t.Errorf("expect %d, got %d", e, a)
+	}
+	if id := app.AccountID(context.Background()); id != "012345678901" {
+		t.Errorf("expect %s, got %s", "012345678901", id)
 	}
 }
