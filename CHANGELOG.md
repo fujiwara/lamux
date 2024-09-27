@@ -1,5 +1,9 @@
 # Changelog
 
+## [v0.0.11](https://github.com/fujiwara/lamux/compare/v0.0.10...v0.0.11) - 2024-09-27
+- add otel trace exporter by @fujiwara in https://github.com/fujiwara/lamux/pull/34
+- Bump the aws-sdk-go-v2 group across 1 directory with 4 updates by @dependabot in https://github.com/fujiwara/lamux/pull/36
+
 ## [v0.0.10](https://github.com/fujiwara/lamux/compare/v0.0.9...v0.0.10) - 2024-07-05
 - set default function-name and domain-suffix by @fujiwara in https://github.com/fujiwara/lamux/pull/25
 
