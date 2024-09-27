@@ -1,5 +1,8 @@
 # Changelog
 
+## [v0.0.12](https://github.com/fujiwara/lamux/compare/v0.0.11...v0.0.12) - 2024-09-27
+- resolve account id on runtime by @fujiwara in https://github.com/fujiwara/lamux/pull/37
+
 ## [v0.0.11](https://github.com/fujiwara/lamux/compare/v0.0.10...v0.0.11) - 2024-09-27
 - add otel trace exporter by @fujiwara in https://github.com/fujiwara/lamux/pull/34
 - Bump the aws-sdk-go-v2 group across 1 directory with 4 updates by @dependabot in https://github.com/fujiwara/lamux/pull/36
