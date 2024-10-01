@@ -6,7 +6,7 @@ toolchain go1.22.3
 
 require (
 	github.com/PumpkinSeed/slog-context v0.1.2
-	github.com/alecthomas/kong v0.9.0
+	github.com/alecthomas/kong v1.2.1
 	github.com/aws/aws-sdk-go-v2 v1.31.0
 	github.com/aws/aws-sdk-go-v2/config v1.27.38
 	github.com/aws/aws-sdk-go-v2/service/lambda v1.62.0
