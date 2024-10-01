@@ -1,5 +1,8 @@
 # Changelog
 
+## [v0.0.14](https://github.com/fujiwara/lamux/compare/v0.0.13...v0.0.14) - 2024-10-01
+- bump github.com/mashiike/go-otel-json-exporters v0.2.0 by @fujiwara in https://github.com/fujiwara/lamux/pull/41
+
 ## [v0.0.13](https://github.com/fujiwara/lamux/compare/v0.0.12...v0.0.13) - 2024-09-27
 - Do not require AccountID by @fujiwara in https://github.com/fujiwara/lamux/pull/39
 
