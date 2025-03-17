@@ -15,6 +15,7 @@ Flags:
       --function-name="*"                 Name of the Lambda function to proxy ($LAMUX_FUNCTION_NAME)
       --domain-suffix="localdomain"       Domain suffix to accept requests for ($LAMUX_DOMAIN_SUFFIX)
       --upstream-timeout=30s              Timeout for upstream requests ($LAMUX_UPSTREAM_TIMEOUT)
+      --error-detail-hiding               Prevent showing error details ($LAMUX_ERROR_DETAIL_HIDING)
       --version                           Show version information
       --trace-insecure                    Disable TLS for Otel trace endpoint ($OTEL_EXPORTER_OTLP_INSECURE)
       --trace-protocol="http/protobuf"    Otel trace protocol ($OTEL_EXPORTER_OTLP_PROTOCOL)
@@ -161,6 +162,10 @@ Domain suffix to accept requests for. This setting is required.
 Timeout for upstream requests. Default is `30s`.
 
 This setting is affected by the Lambda function timeout. If the Lambda function timeout is less than the `--upstream-timeout`, it will time out before the `--upstream-timeout`.
+
+### `--error-detail-hiding` (`$LAMUX_ERROR_DETAIL_HIDING`)
+
+Prevent showing error details. Default is `false`.
 
 
 ### OpenTelemetry tracing support
