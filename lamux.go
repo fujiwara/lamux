@@ -146,10 +146,10 @@ func (l *Lamux) wrapHandler(h handlerFunc) http.HandlerFunc {
 				slog.ErrorContext(ctx, "request", "status", http.StatusInternalServerError, "error", err)
 				code = http.StatusInternalServerError
 			}
-			if l.Config.ErrorDetailHiding {
-				http.Error(w, fmt.Sprintf("%d %s", code, http.StatusText(code)), code)
-			} else {
+			if l.Config.ErrorDetails {
 				http.Error(w, err.Error(), code)
+			} else {
+				http.Error(w, fmt.Sprintf("%d %s", code, http.StatusText(code)), code)
 			}
 			return
 		}

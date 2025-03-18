@@ -174,12 +174,12 @@ func TestProxy(t *testing.T) {
 }
 
 type wrapHandlerTestCase struct {
-	name       string
-	hideError  bool
-	client     *mockClient
-	alias      string
-	expectCode int
-	expectBody string
+	name           string
+	noErrorDetails bool
+	client         *mockClient
+	alias          string
+	expectCode     int
+	expectBody     string
 }
 
 var wrapHandlerTestCases = []wrapHandlerTestCase{
@@ -209,10 +209,10 @@ var wrapHandlerTestCases = []wrapHandlerTestCase{
 			code: 200,
 			body: "OK",
 		},
-		alias:      "notfound",
-		hideError:  true,
-		expectCode: 404,
-		expectBody: "404 Not Found\n",
+		alias:          "notfound",
+		noErrorDetails: true,
+		expectCode:     404,
+		expectBody:     "404 Not Found\n",
 	},
 }
 
@@ -220,10 +220,10 @@ func TestWrapHandler(t *testing.T) {
 	for _, tc := range wrapHandlerTestCases {
 		t.Run(tc.name, func(t *testing.T) {
 			app, err := lamux.NewLamux(&lamux.Config{
-				FunctionName:      "test-func",
-				DomainSuffix:      "example.net",
-				UpstreamTimeout:   time.Second,
-				ErrorDetailHiding: tc.hideError,
+				FunctionName:    "test-func",
+				DomainSuffix:    "example.net",
+				UpstreamTimeout: time.Second,
+				ErrorDetails:    !tc.noErrorDetails,
 			})
 			if err != nil {
 				t.Fatalf("unexpected error: %v", err)
