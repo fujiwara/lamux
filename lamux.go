@@ -75,10 +75,16 @@ func newHandlerError(err error, code int) *HandlerError {
 }
 
 func Run(ctx context.Context) error {
-	slog.SetDefault(slog.New(slogcontext.NewHandler(slog.NewJSONHandler(os.Stdout, nil))))
-
 	cfg := &Config{}
 	kong.Parse(cfg)
+
+	var logLevel slog.Level
+	if err := logLevel.UnmarshalText([]byte(cfg.LogLevel)); err != nil {
+		return fmt.Errorf("invalid log level %q: %w", cfg.LogLevel, err)
+	}
+	slog.SetDefault(slog.New(slogcontext.NewHandler(
+		slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{Level: logLevel}),
+	)))
 	if cfg.Version {
 		fmt.Println(Version)
 		return nil
