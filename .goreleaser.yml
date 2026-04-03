@@ -1,3 +1,4 @@
+version: 2
 before:
   hooks:
     - go mod download
@@ -13,10 +14,11 @@ builds:
     goarch:
       - amd64
       - arm64
+release:
+  prerelease: "true"
+  use_existing_draft: true
 checksum:
   name_template: "checksums.txt"
-snapshot:
-  name_template: "{{ .Tag }}-next"
 changelog:
   sort: asc
   filters:
