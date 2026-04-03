@@ -17,3 +17,7 @@ func (l *Lamux) SetTestClient(client LambdaClient) {
 func (l *Lamux) HandleProxy(ctx context.Context, w http.ResponseWriter, r *http.Request) error {
 	return l.handleProxy(ctx, w, r)
 }
+
+func (l *Lamux) WrapHandler(h handlerFunc) http.HandlerFunc {
+	return l.wrapHandler(h)
+}

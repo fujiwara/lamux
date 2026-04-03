@@ -18,6 +18,7 @@ import (
 
 type mockClient struct {
 	code          int32
+	body          string
 	functionError *string
 	latency       time.Duration
 }
@@ -51,7 +52,7 @@ func (m *mockClient) Invoke(ctx context.Context, input *lambda.InvokeInput, optF
 		FunctionError:   m.functionError,
 		ExecutedVersion: aws.String("1"),
 		LogResult:       aws.String("dummy"),
-		Payload:         []byte(fmt.Sprintf(`{"statusCode":%d}`, m.code)),
+		Payload:         []byte(fmt.Sprintf(`{"statusCode":%d,"body":"%s"}`, m.code, m.body)),
 	}, nil
 }
 
@@ -169,5 +170,79 @@ func TestProxy(t *testing.T) {
 	}
 	if e, a := http.StatusOK, w.Code; e != a {
 		t.Errorf("expect %d, got %d", e, a)
+	}
+}
+
+type wrapHandlerTestCase struct {
+	name           string
+	noErrorDetails bool
+	client         *mockClient
+	alias          string
+	expectCode     int
+	expectBody     string
+}
+
+var wrapHandlerTestCases = []wrapHandlerTestCase{
+	{
+		name: "invoke success",
+		client: &mockClient{
+			code: 200,
+			body: "OK",
+		},
+		alias:      "test",
+		expectCode: 200,
+		expectBody: "OK",
+	},
+	{
+		name: "invoke error not found alias",
+		client: &mockClient{
+			code: 200,
+			body: "OK",
+		},
+		alias:      "notfound",
+		expectCode: 404,
+		expectBody: "failed to invoke: ResourceNotFoundException: Resource not found\n",
+	},
+	{
+		name: "invoke error not found alias with hide error",
+		client: &mockClient{
+			code: 200,
+			body: "OK",
+		},
+		alias:          "notfound",
+		noErrorDetails: true,
+		expectCode:     404,
+		expectBody:     "404 Not Found\n",
+	},
+}
+
+func TestWrapHandler(t *testing.T) {
+	for _, tc := range wrapHandlerTestCases {
+		t.Run(tc.name, func(t *testing.T) {
+			app, err := lamux.NewLamux(&lamux.Config{
+				FunctionName:    "test-func",
+				DomainSuffix:    "example.net",
+				UpstreamTimeout: time.Second,
+				ErrorDetails:    !tc.noErrorDetails,
+			})
+			if err != nil {
+				t.Fatalf("unexpected error: %v", err)
+			}
+			app.SetTestClient(tc.client)
+			r, err := http.NewRequest("GET", "/", nil)
+			if err != nil {
+				t.Fatalf("unexpected error: %v", err)
+			}
+			r.Header.Set("X-Forwarded-Host", fmt.Sprintf("%s.example.net", tc.alias))
+			w := httptest.NewRecorder()
+			handler := app.WrapHandler(app.HandleProxy)
+			handler.ServeHTTP(w, r)
+			if e, a := tc.expectCode, w.Code; e != a {
+				t.Errorf("expect %d, got %d", e, a)
+			}
+			if e, a := tc.expectBody, w.Body.String(); e != a {
+				t.Errorf("expect %s, got %s", e, a)
+			}
+		})
 	}
 }
