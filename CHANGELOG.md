@@ -1,5 +1,12 @@
 # Changelog
 
+## [v0.0.15](https://github.com/fujiwara/lamux/compare/v0.0.14...v0.0.15) - 2026-04-03
+- Add --log-level flag and LAMUX_LOG_LEVEL environment variable by @yumaito in https://github.com/fujiwara/lamux/pull/58
+- Add --[no-]error-details option by @mix3 in https://github.com/fujiwara/lamux/pull/57
+- Bump github.com/alecthomas/kong from 0.9.0 to 1.5.0 by @dependabot[bot] in https://github.com/fujiwara/lamux/pull/51
+- Bump github.com/aws/smithy-go from 1.21.0 to 1.22.1 by @dependabot[bot] in https://github.com/fujiwara/lamux/pull/54
+- Update all dependencies to latest versions by @fujiwara in https://github.com/fujiwara/lamux/pull/60
+
 ## [v0.0.14](https://github.com/fujiwara/lamux/compare/v0.0.13...v0.0.14) - 2024-10-01
 - bump github.com/mashiike/go-otel-json-exporters v0.2.0 by @fujiwara in https://github.com/fujiwara/lamux/pull/41
 
