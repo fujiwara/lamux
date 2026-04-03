@@ -19,6 +19,7 @@ type Config struct {
 	DomainSuffix    string        `help:"Domain suffix to accept requests for" default:"localdomain" env:"LAMUX_DOMAIN_SUFFIX" name:"domain-suffix"`
 	UpstreamTimeout time.Duration `help:"Timeout for upstream requests" default:"30s" env:"LAMUX_UPSTREAM_TIMEOUT" name:"upstream-timeout"`
 	ErrorDetails    bool          `help:"Include detailed errors in the response" default:"true" env:"LAMUX_ERROR_DETAILS" name:"error-details" negatable:""`
+	LogLevel        string        `help:"Log level (DEBUG, INFO, WARN, ERROR)" default:"INFO" env:"LAMUX_LOG_LEVEL" name:"log-level"`
 	Version         bool          `help:"Show version information" name:"version"`
 
 	TraceConfig

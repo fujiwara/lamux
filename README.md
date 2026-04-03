@@ -16,6 +16,7 @@ Flags:
       --domain-suffix="localdomain"       Domain suffix to accept requests for ($LAMUX_DOMAIN_SUFFIX)
       --upstream-timeout=30s              Timeout for upstream requests ($LAMUX_UPSTREAM_TIMEOUT)
       --[no-]error-details                Include detailed errors in the response ($LAMUX_ERROR_DETAILS)
+      --log-level="INFO"                  Log level (DEBUG, INFO, WARN, ERROR) ($LAMUX_LOG_LEVEL)
       --version                           Show version information
       --trace-insecure                    Disable TLS for Otel trace endpoint ($OTEL_EXPORTER_OTLP_INSECURE)
       --trace-protocol="http/protobuf"    Otel trace protocol ($OTEL_EXPORTER_OTLP_PROTOCOL)
@@ -167,6 +168,13 @@ This setting is affected by the Lambda function timeout. If the Lambda function 
 
 Include detailed errors in the response. Default is `true`
 
+### `--log-level` (`$LAMUX_LOG_LEVEL`)
+
+Log level for the application. Default is `INFO`.
+
+Available levels: `DEBUG`, `INFO`, `WARN`, `ERROR`.
+
+For example, setting `LAMUX_LOG_LEVEL=WARN` suppresses Info-level access logs (`handleProxy`, `response`) and only outputs Warn/Error-level logs.
 
 ### OpenTelemetry tracing support
 
