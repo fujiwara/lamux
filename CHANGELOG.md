@@ -1,5 +1,8 @@
 # Changelog
 
+## [v0.0.16](https://github.com/fujiwara/lamux/compare/v0.0.15...v0.0.16) - 2026-04-03
+- Support immutable release with tagpr draft + goreleaser by @fujiwara in https://github.com/fujiwara/lamux/pull/61
+
 ## [v0.0.15](https://github.com/fujiwara/lamux/compare/v0.0.14...v0.0.15) - 2026-04-03
 - Add --log-level flag and LAMUX_LOG_LEVEL environment variable by @yumaito in https://github.com/fujiwara/lamux/pull/58
 - Add --[no-]error-details option by @mix3 in https://github.com/fujiwara/lamux/pull/57
