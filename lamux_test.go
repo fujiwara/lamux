@@ -52,7 +52,7 @@ func (m *mockClient) Invoke(ctx context.Context, input *lambda.InvokeInput, optF
 		FunctionError:   m.functionError,
 		ExecutedVersion: aws.String("1"),
 		LogResult:       aws.String("dummy"),
-		Payload:         []byte(fmt.Sprintf(`{"statusCode":%d,"body":"%s"}`, m.code, m.body)),
+		Payload:         fmt.Appendf(nil, `{"statusCode":%d,"body":"%s"}`, m.code, m.body),
 	}, nil
 }
 
