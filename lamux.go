@@ -282,7 +282,7 @@ func (l *Lamux) Invoke(ctx context.Context, functionName, alias string, b []byte
 	)
 	if resp.FunctionError != nil {
 		span.SetStatus(codes.Error, *resp.FunctionError)
-		return nil, newHandlerError(fmt.Errorf(*resp.FunctionError), http.StatusInternalServerError)
+		return nil, newHandlerError(fmt.Errorf("%s", *resp.FunctionError), http.StatusInternalServerError)
 	}
 	return resp, nil
 }
