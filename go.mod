@@ -12,7 +12,7 @@ require (
 	github.com/fujiwara/lambda-extensions v0.0.7
 	github.com/fujiwara/ridge v0.13.1
 	github.com/mashiike/go-otel-json-exporters v0.2.0
-	go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp v0.67.0
+	go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp v0.68.0
 	go.opentelemetry.io/otel v1.43.0
 	go.opentelemetry.io/otel/exporters/otlp/otlptrace v1.43.0
 	go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracegrpc v1.43.0
