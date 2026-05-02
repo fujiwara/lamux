@@ -8,7 +8,7 @@ require (
 	github.com/aws/aws-sdk-go-v2 v1.41.5
 	github.com/aws/aws-sdk-go-v2/config v1.32.14
 	github.com/aws/aws-sdk-go-v2/service/lambda v1.88.5
-	github.com/aws/smithy-go v1.24.3
+	github.com/aws/smithy-go v1.25.1
 	github.com/fujiwara/lambda-extensions v0.0.7
 	github.com/fujiwara/ridge v0.13.1
 	github.com/mashiike/go-otel-json-exporters v0.2.0
